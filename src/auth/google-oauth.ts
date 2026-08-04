@@ -282,10 +282,24 @@ export class GoogleOAuthCoordinator {
   private pending: PendingSession | undefined;
   private starting: Promise<ConnectGoogleResult> | undefined;
   private lastFailure: FailureState | undefined;
+  private closed = false;
 
   constructor(private readonly dependencies: GoogleOAuthDependencies) {}
 
+  async close(): Promise<void> {
+    this.closed = true;
+
+    const session = this.pending;
+
+    if (session) {
+      await this.disposeSession(session);
+    }
+  }
+
   async start(confirm: true): Promise<ConnectGoogleResult> {
+    if (this.closed) {
+      throw new GoogleOAuthError("AUTH_CANCELLED");
+    }
     if (confirm !== true) {
       throw new GoogleOAuthError("AUTH_REQUIRED");
     }
@@ -446,6 +460,11 @@ export class GoogleOAuthCoordinator {
         }
       });
 
+      if (this.closed) {
+        await closeQuietly(listener);
+        throw new GoogleOAuthError("AUTH_CANCELLED");
+      }
+
       if (!isLoopbackRedirectUri(listener.redirectUri)) {
         throw new GoogleOAuthError("NETWORK_ERROR");
       }
@@ -481,6 +500,10 @@ export class GoogleOAuthCoordinator {
       await this.dependencies.browser.open(
         authorizationUrl(credentials, listener.redirectUri, state, pkce.challenge)
       );
+
+      if (this.closed || !this.isActiveSession(session)) {
+        throw new GoogleOAuthError("AUTH_CANCELLED");
+      }
 
       return result;
     } catch (error) {
