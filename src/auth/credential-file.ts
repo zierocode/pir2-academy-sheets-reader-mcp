@@ -13,6 +13,7 @@ const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 export type DesktopCredentials = {
   clientId: string;
   clientSecret?: string;
+  projectId: string;
   authUri: string;
   tokenUri: string;
   redirectUris: string[];
@@ -54,6 +55,7 @@ const installedCredentialsSchema = z
   .object({
     client_id: z.string().trim().min(1),
     client_secret: z.string().trim().min(1).optional(),
+    project_id: z.string().trim().min(1),
     auth_uri: z.enum(AUTHORIZATION_ENDPOINTS),
     token_uri: z.literal(TOKEN_ENDPOINT),
     redirect_uris: z
@@ -126,6 +128,7 @@ export async function loadDesktopCredentials(path: string): Promise<DesktopCrede
   return {
     clientId: installed.client_id,
     ...(installed.client_secret === undefined ? {} : { clientSecret: installed.client_secret }),
+    projectId: installed.project_id,
     authUri: installed.auth_uri,
     tokenUri: installed.token_uri,
     redirectUris: [...installed.redirect_uris]

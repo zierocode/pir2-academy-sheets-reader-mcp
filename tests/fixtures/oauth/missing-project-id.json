@@ -1,8 +1,7 @@
 {
-  "web": {
-    "client_id": "unit-test-web-client.apps.googleusercontent.com",
-    "client_secret": "unit-test-web-secret",
-    "project_id": "unit-test-web-project",
+  "installed": {
+    "client_id": "unit-test-missing-project-client.apps.googleusercontent.com",
+    "client_secret": "unit-test-missing-project-secret",
     "auth_uri": "https://accounts.google.com/o/oauth2/v2/auth",
     "token_uri": "https://oauth2.googleapis.com/token",
     "redirect_uris": ["http://localhost"]

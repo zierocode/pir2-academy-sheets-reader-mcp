@@ -1,8 +1,8 @@
 {
   "installed": {
-    "client_id": "unit-test-desktop-client.apps.googleusercontent.com",
-    "client_secret": "unit-test-client-secret",
-    "project_id": "unit-test-desktop-project",
+    "client_id": "unit-test-blank-project-client.apps.googleusercontent.com",
+    "client_secret": "unit-test-blank-project-secret",
+    "project_id": "   ",
     "auth_uri": "https://accounts.google.com/o/oauth2/v2/auth",
     "token_uri": "https://oauth2.googleapis.com/token",
     "redirect_uris": ["http://localhost"]
