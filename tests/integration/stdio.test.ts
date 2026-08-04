@@ -40,8 +40,11 @@ class StdioHarness {
     }
 
     const exited = once(this.child, "exit") as Promise<[number | null, NodeJS.Signals | null]>;
-    this.child.kill("SIGTERM");
-    const [code, signal] = await exited;
+    this.child.stdin.end();
+    const [code, signal] = await Promise.race([
+      exited,
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Server did not exit after stdin closed.")), 10_000))
+    ]);
     return { code, signal };
   }
 
@@ -109,13 +112,13 @@ describe("compiled MCP stdio server", () => {
       env: environment,
       stdio: "pipe"
     }));
-  });
+  }, 30_000);
 
   afterAll(async () => {
     if (harness) {
       await expect(harness.stop()).resolves.toEqual({ code: 0, signal: null });
     }
-  });
+  }, 30_000);
 
   it("serves all five tools over pure stdio without attempting real authentication", async () => {
     const initialized = await harness.request(1, "initialize", {
