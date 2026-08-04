@@ -54,6 +54,7 @@ describe("loadDesktopCredentials", () => {
     await expect(loadDesktopCredentials(fixturePath("installed-valid.json"))).resolves.toEqual({
       clientId: "unit-test-desktop-client.apps.googleusercontent.com",
       clientSecret: "unit-test-client-secret",
+      projectId: "unit-test-desktop-project",
       authUri: "https://accounts.google.com/o/oauth2/v2/auth",
       tokenUri: "https://oauth2.googleapis.com/token",
       redirectUris: ["http://localhost"]
@@ -63,6 +64,7 @@ describe("loadDesktopCredentials", () => {
   it("accepts installed desktop credentials without a client secret", async () => {
     await expect(loadDesktopCredentials(fixturePath("installed-without-secret.json"))).resolves.toEqual({
       clientId: "unit-test-desktop-client.apps.googleusercontent.com",
+      projectId: "unit-test-desktop-project",
       authUri: "https://accounts.google.com/o/oauth2/auth",
       tokenUri: "https://oauth2.googleapis.com/token",
       redirectUris: ["http://127.0.0.1:43123/oauth/callback"]
@@ -73,6 +75,7 @@ describe("loadDesktopCredentials", () => {
     const rawContent = JSON.stringify({
       installed: {
         client_id: "unit-test-ipv6-client.apps.googleusercontent.com",
+        project_id: "unit-test-ipv6-project",
         auth_uri: "https://accounts.google.com/o/oauth2/v2/auth",
         token_uri: "https://oauth2.googleapis.com/token",
         redirect_uris: ["http://[::1]:43123/oauth/callback"]
@@ -83,6 +86,7 @@ describe("loadDesktopCredentials", () => {
     try {
       await expect(loadDesktopCredentials(file.path)).resolves.toEqual({
         clientId: "unit-test-ipv6-client.apps.googleusercontent.com",
+        projectId: "unit-test-ipv6-project",
         authUri: "https://accounts.google.com/o/oauth2/v2/auth",
         tokenUri: "https://oauth2.googleapis.com/token",
         redirectUris: ["http://[::1]:43123/oauth/callback"]
@@ -95,6 +99,18 @@ describe("loadDesktopCredentials", () => {
   it.each([
     ["malformed JSON", "malformed.json", "unit-test-malformed-client", "unit-test-malformed-secret"],
     ["a web-client export", "web-credentials.json", "unit-test-web-client.apps.googleusercontent.com", "unit-test-web-secret"],
+    [
+      "a desktop export missing its project ID",
+      "missing-project-id.json",
+      "unit-test-missing-project-client.apps.googleusercontent.com",
+      "unit-test-missing-project-secret"
+    ],
+    [
+      "a desktop export with a blank project ID",
+      "blank-project-id.json",
+      "unit-test-blank-project-client.apps.googleusercontent.com",
+      "unit-test-blank-project-secret"
+    ],
     [
       "a desktop export missing its token endpoint",
       "missing-token-uri.json",
@@ -149,6 +165,7 @@ describe("loadDesktopCredentials", () => {
         installed: {
           client_id: clientId,
           client_secret: secret,
+          project_id: "unit-test-invalid-project",
           auth_uri: authUri,
           token_uri: tokenUri,
           redirect_uris: redirectUris
@@ -184,6 +201,7 @@ describe("loadDesktopCredentials", () => {
       installed: {
         client_id: clientId,
         client_secret: secret,
+        project_id: "unit-test-oversized-project",
         auth_uri: "https://accounts.google.com/o/oauth2/v2/auth",
         token_uri: "https://oauth2.googleapis.com/token",
         redirect_uris: ["http://localhost"],
