@@ -69,6 +69,7 @@ export type ConnectGoogleResult = PendingConnectGoogleResult | ConnectedGoogleRe
 
 export type StartGoogleOptions = {
   waitForAuthorization?: boolean;
+  signal?: AbortSignal;
 };
 
 export type DesktopCredentialsProvider = {
@@ -176,6 +177,7 @@ type PendingSession = {
   result: PendingConnectGoogleResult;
   completion: Promise<SessionCompletion>;
   settle: (completion: SessionCompletion) => void;
+  waiters: Set<object>;
   settled: boolean;
 };
 
@@ -326,11 +328,14 @@ export class GoogleOAuthCoordinator {
     if (confirm !== true) {
       throw new GoogleOAuthError("AUTH_REQUIRED");
     }
+    if (options.waitForAuthorization && options.signal?.aborted) {
+      throw new GoogleOAuthError("AUTH_CANCELLED");
+    }
 
     const session = await this.getOrStartSession();
 
     if (options.waitForAuthorization) {
-      return this.waitForSession(session);
+      return this.waitForSession(session, options.signal);
     }
 
     return session.result;
@@ -528,6 +533,7 @@ export class GoogleOAuthCoordinator {
         result,
         completion,
         settle,
+        waiters: new Set(),
         settled: false
       };
       this.pending = session;
@@ -642,8 +648,8 @@ export class GoogleOAuthCoordinator {
 
     this.lastFailure = undefined;
     const result = connectedResult(session.credentials, token);
+    this.settleSession(session, { type: "success", result });
     await this.disposeSession(session);
-    session.settle({ type: "success", result });
   }
 
   private async finishFailure(
@@ -656,11 +662,11 @@ export class GoogleOAuthCoordinator {
     }
 
     this.recordFailure(code, status);
+    this.settleSession(session, { type: "failure", code });
     await this.disposeSession(session);
-    session.settle({ type: "failure", code });
   }
 
-  private async disposeSession(session: PendingSession): Promise<void> {
+  private settleSession(session: PendingSession, completion: SessionCompletion): void {
     if (session.settled) {
       return;
     }
@@ -673,17 +679,43 @@ export class GoogleOAuthCoordinator {
       this.pending = undefined;
     }
 
+    session.settle(completion);
+  }
+
+  private async disposeSession(session: PendingSession): Promise<void> {
     await closeQuietly(session.listener);
   }
 
-  private async waitForSession(session: PendingSession): Promise<ConnectedGoogleResult> {
-    const completion = await session.completion;
+  private async waitForSession(
+    session: PendingSession,
+    signal: AbortSignal | undefined
+  ): Promise<ConnectedGoogleResult> {
+    const waiter = {};
+    session.waiters.add(waiter);
 
-    if (completion.type === "failure") {
-      throw new GoogleOAuthError(completion.code);
+    try {
+      const completion = await waitForSessionCompletion(session.completion, signal);
+
+      if (completion.type === "failure") {
+        throw new GoogleOAuthError(completion.code);
+      }
+
+      return completion.result;
+    } finally {
+      session.waiters.delete(waiter);
+
+      if (signal?.aborted) {
+        this.cancelUnobservedSession(session);
+      }
+    }
+  }
+
+  private cancelUnobservedSession(session: PendingSession): void {
+    if (!this.isActiveSession(session) || session.waiters.size > 0) {
+      return;
     }
 
-    return completion.result;
+    void this.finishFailure(session, "AUTH_CANCELLED", "failed");
   }
 
   private async refreshToken(
@@ -779,6 +811,40 @@ function createSessionCompletion(): {
   });
 
   return { completion, settle };
+}
+
+function waitForSessionCompletion(
+  completion: Promise<SessionCompletion>,
+  signal: AbortSignal | undefined
+): Promise<SessionCompletion> {
+  if (!signal) {
+    return completion;
+  }
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (callback: () => void) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      signal.removeEventListener("abort", abort);
+      callback();
+    };
+    const abort = () => {
+      finish(() => reject(new GoogleOAuthError("AUTH_CANCELLED")));
+    };
+
+    signal.addEventListener("abort", abort, { once: true });
+    completion.then((result) => {
+      finish(() => resolve(result));
+    });
+
+    if (signal.aborted) {
+      abort();
+    }
+  });
 }
 
 function connectedResult(

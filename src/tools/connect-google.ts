@@ -18,7 +18,10 @@ export function createConnectGoogleTool(): UnboundToolDefinition {
       }
 
       return context.success(
-        await context.services.oauth.start(parsed.data.confirm, { waitForAuthorization: true })
+        await context.services.oauth.start(parsed.data.confirm, {
+          waitForAuthorization: true,
+          ...(context.signal === undefined ? {} : { signal: context.signal })
+        })
       );
     }
   };

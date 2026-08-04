@@ -1,8 +1,11 @@
 import { EventEmitter } from "node:events";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { describe, expect, it, vi } from "vitest";
 import type { AuthStatus, ConnectGoogleResult } from "../../src/auth/google-oauth.js";
 import type { SpreadsheetMetadata } from "../../src/google/sheets-client.js";
 import {
+  createMcpServer,
   createToolCatalog,
   installInputShutdownHandlers,
   type ToolCallResult,
@@ -128,6 +131,61 @@ function expectMatchingContent(result: ToolCallResult, expected: unknown): void 
 }
 
 describe("MCP tool contract", () => {
+  it("forwards SDK CallTool cancellation to a waiting connect_google call", async () => {
+    const harness = createHarness();
+    const caller = new AbortController();
+    let signal: AbortSignal | undefined;
+    let resolveStart: (() => void) | undefined;
+    const completed: ConnectGoogleResult = {
+      authorizationStarted: true,
+      status: "connected",
+      projectId: "learner-project",
+      scopeGranted: true
+    };
+
+    harness.services.oauth.start = vi.fn(
+      (_confirm: true, options?: Parameters<ToolServices["oauth"]["start"]>[1]) =>
+        new Promise<ConnectGoogleResult>((resolve, reject) => {
+          signal = options?.signal;
+          resolveStart = () => resolve(completed);
+          signal?.addEventListener("abort", () => reject(new Error("caller cancelled")), {
+            once: true
+          });
+        })
+    );
+
+    const server = createMcpServer(harness.services, {
+      now: () => NOW,
+      requestId: () => "request-123",
+      diagnostic: () => undefined
+    });
+    const client = new Client({ name: "contract-client", version: "0.1.0" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+
+    try {
+      await server.connect(serverTransport);
+      await client.connect(clientTransport);
+
+      const call = client.callTool(
+        { name: "connect_google", arguments: { confirm: true } },
+        undefined,
+        { signal: caller.signal }
+      );
+
+      void call.catch(() => undefined);
+      await vi.waitFor(() => expect(harness.services.oauth.start).toHaveBeenCalledTimes(1));
+
+      caller.abort();
+
+      await expect(call).rejects.toBeInstanceOf(Error);
+      await vi.waitFor(() => expect(signal?.aborted).toBe(true));
+    } finally {
+      resolveStart?.();
+      await client.close();
+      await server.close();
+    }
+  });
+
   it("disposes resources when the parent closes stdin", async () => {
     const input = new EventEmitter() as unknown as NodeJS.ReadableStream;
     const close = vi.fn().mockResolvedValue(undefined);

@@ -165,6 +165,7 @@ export type ToolCallResult = {
 
 export type ToolExecutionContext = {
   services: ToolServices;
+  signal?: AbortSignal;
   success(data: unknown): ToolCallResult;
   failure(code: ErrorCode, retryable?: boolean): ToolCallResult;
   requireReadAuthorization(): Promise<ToolCallResult | undefined>;
@@ -174,7 +175,7 @@ export type ToolDefinition = {
   name: ToolName;
   description: string;
   inputSchema: z.ZodType;
-  handler(input: unknown): Promise<ToolCallResult>;
+  handler(input: unknown, signal?: AbortSignal): Promise<ToolCallResult>;
 };
 
 export type UnboundToolDefinition = Omit<ToolDefinition, "handler"> & {
@@ -213,10 +214,10 @@ export function createToolCatalog(
     name: definition.name,
     description: definition.description,
     inputSchema: definition.inputSchema,
-    handler: async (input: unknown) => {
+    handler: async (input: unknown, signal?: AbortSignal) => {
       const id = requestId();
       const startedAt = Date.now();
-      const context = createToolExecutionContext(services, id, now);
+      const context = createToolExecutionContext(services, id, now, signal);
       let result: ToolCallResult;
 
       try {
@@ -245,11 +246,11 @@ export function createMcpServer(
       inputSchema: z.toJSONSchema(tool.inputSchema)
     }))
   }));
-  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
     const tool = catalog.find((candidate) => candidate.name === request.params.name);
 
     return tool
-      ? tool.handler(request.params.arguments ?? {})
+      ? tool.handler(request.params.arguments ?? {}, extra.signal)
       : failureResult("GOOGLE_API_ERROR", randomUUID());
   });
 
@@ -347,10 +348,12 @@ export async function runStdioServer(
 function createToolExecutionContext(
   services: ToolServices,
   requestId: string,
-  now: () => string
+  now: () => string,
+  signal: AbortSignal | undefined
 ): ToolExecutionContext {
   return {
     services,
+    signal,
     success: (data) => successResult(data, requestId, now()),
     failure: (code, retryable) => failureResult(code, requestId, retryable),
     requireReadAuthorization: async () => {
