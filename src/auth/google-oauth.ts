@@ -178,6 +178,7 @@ type PendingSession = {
   completion: Promise<SessionCompletion>;
   settle: (completion: SessionCompletion) => void;
   waiters: Set<object>;
+  disposal?: Promise<void>;
   settled: boolean;
 };
 
@@ -303,6 +304,8 @@ export function createProductionGoogleOAuthDependencies(
 export class GoogleOAuthCoordinator {
   private pending: PendingSession | undefined;
   private starting: Promise<PendingSession> | undefined;
+  private readonly startingWaiters = new Set<object>();
+  private readonly disposals = new Set<Promise<void>>();
   private lastFailure: FailureState | undefined;
   private closed = false;
 
@@ -316,6 +319,8 @@ export class GoogleOAuthCoordinator {
     if (session) {
       await this.finishFailure(session, "AUTH_CANCELLED", "failed");
     }
+
+    await this.waitForDisposals();
   }
 
   async start(
@@ -332,13 +337,28 @@ export class GoogleOAuthCoordinator {
       throw new GoogleOAuthError("AUTH_CANCELLED");
     }
 
-    const session = await this.getOrStartSession();
-
-    if (options.waitForAuthorization) {
-      return this.waitForSession(session, options.signal);
+    if (!options.waitForAuthorization) {
+      return (await this.getOrStartSession()).result;
     }
 
-    return session.result;
+    const startingWaiter = {};
+    this.startingWaiters.add(startingWaiter);
+    const starting = this.getOrStartSession();
+    let attachedToSession = false;
+
+    try {
+      const session = await waitForAbortable(starting, options.signal);
+
+      this.startingWaiters.delete(startingWaiter);
+      attachedToSession = true;
+
+      return this.waitForSession(session, options.signal);
+    } finally {
+      if (!attachedToSession) {
+        this.startingWaiters.delete(startingWaiter);
+        this.cancelUnobservedStartingSession(starting);
+      }
+    }
   }
 
   private async getOrStartSession(): Promise<PendingSession> {
@@ -683,7 +703,18 @@ export class GoogleOAuthCoordinator {
   }
 
   private async disposeSession(session: PendingSession): Promise<void> {
-    await closeQuietly(session.listener);
+    if (!session.disposal) {
+      const disposal = closeQuietly(session.listener);
+
+      session.disposal = disposal;
+      this.disposals.add(disposal);
+      void disposal.then(
+        () => this.disposals.delete(disposal),
+        () => this.disposals.delete(disposal)
+      );
+    }
+
+    await session.disposal;
   }
 
   private async waitForSession(
@@ -694,7 +725,7 @@ export class GoogleOAuthCoordinator {
     session.waiters.add(waiter);
 
     try {
-      const completion = await waitForSessionCompletion(session.completion, signal);
+      const completion = await waitForAbortable(session.completion, signal);
 
       if (completion.type === "failure") {
         throw new GoogleOAuthError(completion.code);
@@ -710,12 +741,43 @@ export class GoogleOAuthCoordinator {
     }
   }
 
-  private cancelUnobservedSession(session: PendingSession): void {
-    if (!this.isActiveSession(session) || session.waiters.size > 0) {
+  private cancelUnobservedSession(session: PendingSession): boolean {
+    if (
+      !this.isActiveSession(session) ||
+      session.waiters.size > 0 ||
+      this.startingWaiters.size > 0
+    ) {
+      return false;
+    }
+
+    const starting = this.starting;
+    void this.finishFailure(session, "AUTH_CANCELLED", "failed");
+    this.detachStartingSession(starting);
+    return true;
+  }
+
+  private cancelUnobservedStartingSession(starting: Promise<PendingSession>): void {
+    if (this.pending) {
+      this.cancelUnobservedSession(this.pending);
       return;
     }
 
-    void this.finishFailure(session, "AUTH_CANCELLED", "failed");
+    void starting.then(
+      (session) => this.cancelUnobservedSession(session),
+      () => undefined
+    );
+  }
+
+  private detachStartingSession(starting: Promise<PendingSession> | undefined): void {
+    if (starting && this.starting === starting) {
+      this.starting = undefined;
+    }
+  }
+
+  private async waitForDisposals(): Promise<void> {
+    while (this.disposals.size > 0) {
+      await Promise.all(this.disposals);
+    }
   }
 
   private async refreshToken(
@@ -813,12 +875,12 @@ function createSessionCompletion(): {
   return { completion, settle };
 }
 
-function waitForSessionCompletion(
-  completion: Promise<SessionCompletion>,
+function waitForAbortable<Value>(
+  operation: Promise<Value>,
   signal: AbortSignal | undefined
-): Promise<SessionCompletion> {
+): Promise<Value> {
   if (!signal) {
-    return completion;
+    return operation;
   }
 
   return new Promise((resolve, reject) => {
@@ -837,9 +899,14 @@ function waitForSessionCompletion(
     };
 
     signal.addEventListener("abort", abort, { once: true });
-    completion.then((result) => {
-      finish(() => resolve(result));
-    });
+    operation.then(
+      (result) => {
+        finish(() => resolve(result));
+      },
+      (error: unknown) => {
+        finish(() => reject(error));
+      }
+    );
 
     if (signal.aborted) {
       abort();
@@ -887,10 +954,14 @@ async function createNodeLoopbackListener(
 
   try {
     const port = await listenOnLoopback(server);
+    let closing: Promise<void> | undefined;
 
     return {
       redirectUri: `http://127.0.0.1:${port}/oauth/callback`,
-      close: async () => closeNodeServer(server)
+      close: () => {
+        closing ??= closeNodeServer(server);
+        return closing;
+      }
     };
   } catch {
     await closeNodeServer(server);
@@ -998,6 +1069,7 @@ function writeSafeHtml(response: ServerResponse, statusCode: number, html: strin
 
   response.writeHead(statusCode, {
     "cache-control": "no-store",
+    connection: "close",
     "content-type": "text/html; charset=utf-8",
     "x-content-type-options": "nosniff"
   });
@@ -1010,7 +1082,18 @@ async function closeNodeServer(server: Server): Promise<void> {
   }
 
   await new Promise<void>((resolve) => {
-    server.close(() => resolve());
+    try {
+      server.close(() => resolve());
+      setImmediate(() => {
+        try {
+          server.closeAllConnections();
+        } catch {
+          // A concurrent close already released every loopback connection.
+        }
+      });
+    } catch {
+      resolve();
+    }
   });
 }
 
