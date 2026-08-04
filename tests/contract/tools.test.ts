@@ -1,8 +1,10 @@
+import { EventEmitter } from "node:events";
 import { describe, expect, it, vi } from "vitest";
 import type { AuthStatus, ConnectGoogleResult } from "../../src/auth/google-oauth.js";
 import type { SpreadsheetMetadata } from "../../src/google/sheets-client.js";
 import {
   createToolCatalog,
+  installInputShutdownHandlers,
   type ToolCallResult,
   type ToolServices
 } from "../../src/server.js";
@@ -125,6 +127,19 @@ function expectMatchingContent(result: ToolCallResult, expected: unknown): void 
 }
 
 describe("MCP tool contract", () => {
+  it("disposes resources when the parent closes stdin", async () => {
+    const input = new EventEmitter() as unknown as NodeJS.ReadableStream;
+    const close = vi.fn().mockResolvedValue(undefined);
+    const remove = installInputShutdownHandlers(input, close);
+
+    (input as unknown as EventEmitter).emit("end");
+    await vi.waitFor(() => expect(close).toHaveBeenCalledTimes(1));
+
+    remove();
+    (input as unknown as EventEmitter).emit("close");
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
   it("exposes exactly the documented tool names and learner-facing purposes", () => {
     const harness = createHarness();
 

@@ -296,6 +296,23 @@ export function createProductionMcpServer(
   return createMcpServer(createProductionToolServices(environment));
 }
 
+export function installInputShutdownHandlers(
+  input: NodeJS.ReadableStream,
+  close: () => Promise<void>
+): () => void {
+  const closeOnInput = (): void => {
+    void close();
+  };
+
+  input.once("end", closeOnInput);
+  input.once("close", closeOnInput);
+
+  return () => {
+    input.off("end", closeOnInput);
+    input.off("close", closeOnInput);
+  };
+}
+
 export async function runStdioServer(
   environment: NodeJS.ProcessEnv = process.env
 ): Promise<void> {
@@ -319,9 +336,11 @@ export async function runStdioServer(
 
   process.once("SIGINT", closeOnSignal);
   process.once("SIGTERM", closeOnSignal);
+  const removeInputShutdownHandlers = installInputShutdownHandlers(process.stdin, close);
   transport.onclose = () => {
     process.off("SIGINT", closeOnSignal);
     process.off("SIGTERM", closeOnSignal);
+    removeInputShutdownHandlers();
     void close();
   };
 

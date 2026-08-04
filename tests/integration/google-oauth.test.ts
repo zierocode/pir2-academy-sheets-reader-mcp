@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { DesktopCredentials } from "../../src/auth/credential-file.js";
 import { TokenStoreUnavailableError, type StoredGoogleToken, type TokenStore } from "../../src/auth/token-store.js";
 import {
@@ -37,6 +37,7 @@ type OAuthHarnessOptions = {
   tokenStoreError?: Error;
   listenerError?: Error;
   browserError?: Error;
+  browserOpen?: (authorizationUrl: string) => Promise<void>;
   exchangeError?: Error;
   exchange?: (input: unknown) => Promise<StoredGoogleToken>;
   refreshError?: Error;
@@ -107,6 +108,7 @@ function createOAuthHarness(options: OAuthHarnessOptions = {}): OAuthHarness {
         }
 
         browserUrls.push(authorizationUrl);
+        await options.browserOpen?.(authorizationUrl);
       }
     },
     clock: {
@@ -886,5 +888,18 @@ describe("production OAuth dependencies", () => {
     expect(harness.activeTimerCount()).toBe(0);
     await harness.coordinator.close();
     expect(harness.listenerCloseCount()).toBe(1);
+  });
+
+  it("closes immediately while a browser opener is stalled", async () => {
+    const harness = createOAuthHarness({
+      browserOpen: async () => new Promise<void>(() => undefined)
+    });
+    void harness.coordinator.start(true);
+    await vi.waitFor(() => expect(harness.activeTimerCount()).toBe(1));
+
+    await expect(harness.coordinator.close()).resolves.toBeUndefined();
+
+    expect(harness.listenerCloseCount()).toBe(1);
+    expect(harness.activeTimerCount()).toBe(0);
   });
 });
