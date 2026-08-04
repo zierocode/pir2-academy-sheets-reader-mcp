@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { describe, expect, it, vi } from "vitest";
 import { SheetsReaderError, SheetsReader } from "../../src/google/sheets-client.js";
 
@@ -92,9 +92,16 @@ describe("SheetsReader", () => {
     await expect(new SheetsReader(hugeClient).readRanges({ spreadsheet: ID, ranges: ["A1:A20001"] })).rejects.toMatchObject({ code: "RESPONSE_LIMIT_EXCEEDED" });
   });
 
-  it("keeps the adapter source read-only and free of Drive scopes", async () => {
+  it("whitelists Sheets calls and keeps every source file free of Drive scopes", async () => {
     const source = await readFile(new URL("../../src/google/sheets-client.ts", import.meta.url), "utf8");
-    expect(source).not.toMatch(/spreadsheets\.values\.(?:append|update|batchUpdate|clear)|spreadsheets\.batchUpdate|auth\/drive/);
+    const calls = [...source.matchAll(/this\.api\.spreadsheets(\.values)?\.([A-Za-z0-9_]+)\(/g)]
+      .map((match) => `${match[1] ?? ""}.${match[2]}`)
+      .sort();
+    expect(calls).toEqual([".get", ".values.batchGet", ".values.get"]);
+    const sourceRoot = new URL("../../src/", import.meta.url);
+    const names = await readdir(sourceRoot, { recursive: true });
+    const allSource = (await Promise.all(names.filter((name) => name.endsWith(".ts")).map((name) => readFile(new URL(name, sourceRoot), "utf8")))).join("\n");
+    expect(allSource).not.toMatch(/googleapis\.com\/auth\/drive(?:\b|\.)/);
     expect(source.match(/retry: false/g)).toHaveLength(3);
   });
 });
