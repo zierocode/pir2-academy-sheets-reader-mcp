@@ -30,7 +30,10 @@
     "typecheck:contracts": "tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --verbatimModuleSyntax --skipLibCheck tests/unit/contracts.test.ts tests/unit/logging.test.ts",
     "check": "npm run typecheck && npm run test",
     "smoke": "node -e \"const { spawnSync } = require('node:child_process'); const result = spawnSync(process.execPath, ['server/index.js'], { encoding: 'utf8' }); if (result.status !== 0 || result.stdout !== '') { process.exit(1); }\"",
-    "audit:high": "npm audit --audit-level=high"
+    "audit:high": "npm audit --audit-level=high",
+    "bundle": "node scripts/pack.mjs",
+    "bundle:verify": "node scripts/verify-bundle.mjs",
+    "bundle:test": "vitest run tests/contract/manifest.test.ts tests/integration/bundle.test.ts"
   },
   "devDependencies": {
     "@types/node": "22.18.6",
