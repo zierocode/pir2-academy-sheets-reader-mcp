@@ -1,0 +1,80 @@
+{
+  "$schema": "https://raw.githubusercontent.com/modelcontextprotocol/mcpb/main/schemas/mcpb-manifest-v0.4.schema.json",
+  "manifest_version": "0.4",
+  "name": "pir2-academy-sheets-reader",
+  "display_name": "PiR2 Academy — Sheets Reader",
+  "version": "0.1.0",
+  "description": "Read Google Sheets through learner-owned OAuth for PiR2 Academy dashboards.",
+  "long_description": "A local, read-only Google Sheets MCP server for the Advanced Claude CoWork course. Each learner connects a Google Cloud Desktop OAuth client that they own. Tokens stay in the operating system credential vault.",
+  "author": {
+    "name": "PiR2 Academy"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zierocode/pir2-academy-sheets-reader-mcp"
+  },
+  "homepage": "https://github.com/zierocode/pir2-academy-sheets-reader-mcp",
+  "documentation": "https://github.com/zierocode/pir2-academy-sheets-reader-mcp#readme",
+  "support": "https://github.com/zierocode/pir2-academy-sheets-reader-mcp/issues",
+  "icon": "icon.png",
+  "license": "MIT",
+  "keywords": [
+    "google-sheets",
+    "read-only",
+    "dashboard",
+    "pir2-academy"
+  ],
+  "compatibility": {
+    "platforms": [
+      "darwin",
+      "win32"
+    ],
+    "runtimes": {
+      "node": ">=20"
+    }
+  },
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/server/index.js"
+      ],
+      "env": {
+        "GOOGLE_OAUTH_CREDENTIALS_FILE": "${user_config.google_oauth_credentials_file}"
+      }
+    }
+  },
+  "user_config": {
+    "google_oauth_credentials_file": {
+      "type": "file",
+      "title": "Google Desktop OAuth credentials",
+      "description": "Select the credentials JSON downloaded from your own Google Cloud project.",
+      "required": true,
+      "multiple": false
+    }
+  },
+  "tools": [
+    {
+      "name": "google_auth_status",
+      "description": "Check whether Google Sheets OAuth is connected."
+    },
+    {
+      "name": "connect_google",
+      "description": "Connect the learner's Google account with read-only Sheets access."
+    },
+    {
+      "name": "get_spreadsheet_metadata",
+      "description": "Read spreadsheet title and sheet metadata without cell values."
+    },
+    {
+      "name": "read_sheet_sample",
+      "description": "Read a bounded sample so Claude can understand a sheet safely."
+    },
+    {
+      "name": "read_sheet_ranges",
+      "description": "Read one or more bounded A1 ranges from a spreadsheet."
+    }
+  ]
+}
