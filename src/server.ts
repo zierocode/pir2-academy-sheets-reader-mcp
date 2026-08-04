@@ -56,15 +56,12 @@ const ERROR_CODES = new Set<ErrorCode>([
   "GOOGLE_API_ERROR"
 ]);
 
-const TOOL_NAMES = [
-  "google_auth_status",
-  "connect_google",
-  "get_spreadsheet_metadata",
-  "read_sheet_sample",
-  "read_sheet_ranges"
-] as const;
-
-type ToolName = (typeof TOOL_NAMES)[number];
+type ToolName =
+  | "google_auth_status"
+  | "connect_google"
+  | "get_spreadsheet_metadata"
+  | "read_sheet_sample"
+  | "read_sheet_ranges";
 
 type SafeError = {
   message: string;
