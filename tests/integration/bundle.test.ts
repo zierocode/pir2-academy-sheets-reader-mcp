@@ -21,7 +21,8 @@ function run(script: string) {
 
 describe("MCPB bundle", () => {
   it("packs a deterministic release archive with a matching SHA-256 checksum", () => {
-    expect(run(PACK_SCRIPT).status).toBe(0);
+    const result = run(PACK_SCRIPT);
+    expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
     expect(existsSync(BUNDLE_PATH)).toBe(true);
     expect(existsSync(CHECKSUM_PATH)).toBe(true);
 

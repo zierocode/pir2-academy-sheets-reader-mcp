@@ -11,9 +11,10 @@ const bundleName = `pir2-academy-sheets-reader-${packageJson.version}.mcpb`;
 const bundle = resolve(ROOT, "dist", bundleName);
 const checksumFile = `${bundle}.sha256`;
 const unpackRoot = mkdtempSync(resolve(tmpdir(), "pir2-sheets-verify-"));
-const NPM = process.platform === "win32" ? "npm.cmd" : "npm";
+const NPM_CLI = process.env.npm_execpath;
 const TOOLING = resolve(ROOT, "tools/mcpb-cli");
 const MCPB_CLI = resolve(TOOLING, "node_modules/@anthropic-ai/mcpb/dist/cli/cli.js");
+if (!NPM_CLI) throw new Error("run this script through npm so the locked npm CLI is available");
 
 function fail(message) {
   throw new Error(message);
@@ -32,12 +33,12 @@ try {
   const actual = createHash("sha256").update(readFileSync(bundle)).digest("hex");
   if (expected !== actual) fail("SHA-256 checksum mismatch");
 
-  const install = spawnSync(NPM, ["ci", "--ignore-scripts", "--no-audit"], {
+  const install = spawnSync(process.execPath, [NPM_CLI, "ci", "--ignore-scripts", "--no-audit"], {
     cwd: TOOLING,
     encoding: "utf8"
   });
   if (install.status !== 0) fail(`locked MCPB tooling install failed\n${install.stderr}`);
-  const audit = spawnSync(NPM, ["audit", "--audit-level=high"], { cwd: TOOLING, encoding: "utf8" });
+  const audit = spawnSync(process.execPath, [NPM_CLI, "audit", "--audit-level=high"], { cwd: TOOLING, encoding: "utf8" });
   if (audit.status !== 0) fail(`MCPB tooling audit failed\n${audit.stdout}\n${audit.stderr}`);
 
   const unpack = spawnSync(process.execPath, [MCPB_CLI, "unpack", bundle, unpackRoot], {

@@ -17,9 +17,10 @@ const output = resolve(outputDir, `pir2-academy-sheets-reader-${packageJson.vers
 const checksum = `${output}.sha256`;
 const stagingRoot = mkdtempSync(resolve(tmpdir(), "pir2-sheets-mcpb-"));
 const staging = resolve(stagingRoot, "bundle");
-const NPM = process.platform === "win32" ? "npm.cmd" : "npm";
+const NPM_CLI = process.env.npm_execpath;
 const TOOLING = resolve(ROOT, "tools/mcpb-cli");
 const MCPB_CLI = resolve(TOOLING, "node_modules/@anthropic-ai/mcpb/dist/cli/cli.js");
+if (!NPM_CLI) throw new Error("run this script through npm so the locked npm CLI is available");
 
 function run(command, args, cwd = ROOT) {
   const result = spawnSync(command, args, { cwd, encoding: "utf8", stdio: "pipe" });
@@ -59,8 +60,8 @@ function normalizeZipTimestamps(path) {
 
 try {
   mkdirSync(staging, { recursive: true });
-  run(NPM, ["ci", "--ignore-scripts", "--no-audit"], TOOLING);
-  run(NPM, ["audit", "--audit-level=high"], TOOLING);
+  run(process.execPath, [NPM_CLI, "ci", "--ignore-scripts", "--no-audit"], TOOLING);
+  run(process.execPath, [NPM_CLI, "audit", "--audit-level=high"], TOOLING);
   mkdirSync(resolve(staging, "server"), { recursive: true });
   run(process.execPath, [
     resolve(ROOT, "node_modules/typescript/bin/tsc"), "--project", "tsconfig.json",
@@ -72,8 +73,8 @@ try {
   cpSync(resolve(ROOT, "package.json"), resolve(staging, "package.json"));
   cpSync(resolve(ROOT, "package-lock.json"), resolve(staging, "package-lock.json"));
 
-  run(NPM, ["ci", "--omit=dev", "--ignore-scripts", "--no-audit"], staging);
-  run(NPM, [
+  run(process.execPath, [NPM_CLI, "ci", "--omit=dev", "--ignore-scripts", "--no-audit"], staging);
+  run(process.execPath, [NPM_CLI,
     "install", "--ignore-scripts", "--force", "--no-save", "--no-audit",
     "@napi-rs/keyring-darwin-arm64@1.3.0",
     "@napi-rs/keyring-darwin-x64@1.3.0",
