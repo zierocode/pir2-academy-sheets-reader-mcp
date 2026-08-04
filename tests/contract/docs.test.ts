@@ -81,6 +81,7 @@ describe("CI and release contracts", () => {
       expect(workflow).toContain(platform);
     }
     expect(workflow).toContain("npm run bundle:verify");
+    expect(workflow).toContain("npm run bundle");
     expect(workflow).toContain("npm run lint");
     expect(workflow).toContain("npm run audit:high");
     expect(workflow).toContain("npm run audit:tooling");
@@ -95,6 +96,8 @@ describe("CI and release contracts", () => {
     expect(workflow).toContain("contents: write");
     expect(workflow).toContain("npm run release:guard");
     expect(workflow).toContain("fetch-depth: 0");
+    expect(workflow).toContain("--event push");
+    expect(workflow).toContain("--status success");
     expect(workflow).toContain("npm run bundle:verify");
     expect(workflow).toContain(".mcpb.sha256");
     expect(workflow).toContain("gh release create");

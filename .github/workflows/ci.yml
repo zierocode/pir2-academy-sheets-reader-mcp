@@ -42,4 +42,5 @@ jobs:
       - run: npm run audit:high
       - run: npm run audit:tooling
       - run: npm run scan:secrets
+      - run: npm run bundle
       - run: npm run bundle:verify

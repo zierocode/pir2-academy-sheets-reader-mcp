@@ -12,7 +12,9 @@ const forbiddenContent = [
   /"client_secret"\s*:/,
   /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/,
   /ya29\.[A-Za-z0-9_-]{20,}/,
-  /AIza[0-9A-Za-z_-]{30,}/
+  /AIza[0-9A-Za-z_-]{30,}/,
+  /"(?:refresh_token|access_token)"\s*:\s*"(?!unit-test|fixture|redacted)[^"]{8,}"/i,
+  /\bBearer\s+[A-Za-z0-9._~-]{20,}/i
 ];
 const findings = [];
 
@@ -20,7 +22,11 @@ for (const relativePath of tracked.stdout.toString("utf8").split("\0").filter(Bo
   if (forbiddenName.test(basename(relativePath))) findings.push(`${relativePath}: forbidden credential filename`);
   const path = resolve(ROOT, relativePath);
   const content = readFileSync(path);
-  if (content.length > 2_000_000 || content.includes(0)) continue;
+  if (content.includes(0)) continue;
+  if (content.length > 2_000_000) {
+    findings.push(`${relativePath}: oversized text file requires manual secret review`);
+    continue;
+  }
   const text = content.toString("utf8");
   const scannable = relativePath.startsWith("tests/fixtures/oauth/")
     ? text.replace(/"client_secret"\s*:\s*"unit-test-[^"]+"/g, '"fixture_secret":"redacted"')

@@ -16,8 +16,11 @@ if (tag !== expected) {
   throw new Error(`release tag ${tag ?? "<missing>"} does not match ${expected}`);
 }
 if (process.env.GITHUB_ACTIONS === "true") {
-  const ancestor = spawnSync("git", ["merge-base", "--is-ancestor", "HEAD", "origin/main"], { cwd: ROOT });
-  if (ancestor.status !== 0) throw new Error("release tag commit is not contained in origin/main");
+  const head = spawnSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8" });
+  const main = spawnSync("git", ["rev-parse", "origin/main"], { cwd: ROOT, encoding: "utf8" });
+  if (head.status !== 0 || main.status !== 0 || head.stdout.trim() !== main.stdout.trim()) {
+    throw new Error("release tag must point to the exact origin/main tip");
+  }
 }
 
 process.stdout.write(`release guard passed: ${tag}\n`);
