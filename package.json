@@ -38,6 +38,7 @@
     "vitest": "4.1.10"
   },
   "dependencies": {
+    "@napi-rs/keyring": "1.3.0",
     "zod": "4.4.3"
   }
 }
