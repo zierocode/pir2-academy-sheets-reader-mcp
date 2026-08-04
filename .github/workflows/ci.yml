@@ -35,7 +35,12 @@ jobs:
           node-version: "20"
           cache: npm
       - run: npm ci
+      - run: npm run lint
       - run: npm run check
       - run: npm run build
       - run: npm run smoke
       - run: npm run audit:high
+      - run: npm run audit:tooling
+      - run: npm run scan:secrets
+      - run: npm run bundle
+      - run: npm run bundle:verify

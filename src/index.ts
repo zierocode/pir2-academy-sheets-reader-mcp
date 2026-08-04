@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { buildServerIdentity, runStdioServer } from "./server.js";
+import { runStdioServer } from "./server.js";
 
 export { buildServerIdentity } from "./server.js";
 

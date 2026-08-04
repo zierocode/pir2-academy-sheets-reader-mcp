@@ -1,6 +1,6 @@
 import { readFile, readdir } from "node:fs/promises";
 import { describe, expect, it, vi } from "vitest";
-import { SheetsReaderError, SheetsReader } from "../../src/google/sheets-client.js";
+import { SheetsReader } from "../../src/google/sheets-client.js";
 
 const ID = "12345678901234567890123456789012345678901234";
 
