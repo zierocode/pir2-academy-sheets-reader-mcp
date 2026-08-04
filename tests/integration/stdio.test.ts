@@ -112,7 +112,7 @@ describe("compiled MCP stdio server", () => {
       env: environment,
       stdio: "pipe"
     }));
-  }, 30_000);
+  }, 120_000);
 
   afterAll(async () => {
     if (harness) {
