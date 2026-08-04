@@ -26,8 +26,11 @@
   "scripts": {
     "build": "tsc --project tsconfig.json",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit",
-    "check": "npm run typecheck && npm run test"
+    "typecheck": "tsc --noEmit && npm run typecheck:contracts",
+    "typecheck:contracts": "tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --verbatimModuleSyntax --skipLibCheck tests/unit/contracts.test.ts tests/unit/logging.test.ts",
+    "check": "npm run typecheck && npm run test",
+    "smoke": "node -e \"const { spawnSync } = require('node:child_process'); const result = spawnSync(process.execPath, ['server/index.js'], { encoding: 'utf8' }); if (result.status !== 0 || result.stdout !== '') { process.exit(1); }\"",
+    "audit:high": "npm audit --audit-level=high"
   },
   "devDependencies": {
     "@types/node": "22.18.6",
