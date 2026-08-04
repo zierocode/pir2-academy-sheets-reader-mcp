@@ -273,4 +273,39 @@ describe("MCP tool contract", () => {
     expect(serialized).not.toContain("learner-sheet-title");
     expect(safe.content[0]?.text).toBe(serialized);
   });
+
+  it("preserves specific failed authorization remediation", async () => {
+    for (const code of ["INVALID_CREDENTIAL_FILE", "TOKEN_STORE_UNAVAILABLE"] as const) {
+      const harness = createHarness({
+        credentialsConfigured: code !== "INVALID_CREDENTIAL_FILE",
+        status: "failed",
+        scopeGranted: false,
+        lastErrorCode: code
+      });
+      const result = await tool(harness, "read_sheet_sample").handler({ spreadsheet: SPREADSHEET_ID });
+      expect(result.structuredContent).toMatchObject({ ok: false, error: { code } });
+      expect(harness.readSampleInputs).toEqual([]);
+    }
+  });
+
+  it("rejects surrounding whitespace and oversize inputs without delegation", async () => {
+    const harness = createHarness();
+    const metadataResult = await tool(harness, "get_spreadsheet_metadata").handler({
+      spreadsheet: ` ${SPREADSHEET_ID}`
+    });
+    const sampleResult = await tool(harness, "read_sheet_sample").handler({
+      spreadsheet: `${SPREADSHEET_ID} `,
+      sheetName: " Overview"
+    });
+    const rangesResult = await tool(harness, "read_sheet_ranges").handler({
+      spreadsheet: SPREADSHEET_ID,
+      ranges: [`${"A".repeat(201)}`]
+    });
+    expect(metadataResult.structuredContent).toMatchObject({ error: { code: "INVALID_SPREADSHEET_REFERENCE" } });
+    expect(sampleResult.structuredContent).toMatchObject({ error: { code: "INVALID_RANGE" } });
+    expect(rangesResult.structuredContent).toMatchObject({ error: { code: "INVALID_RANGE" } });
+    expect(harness.metadataInputs).toEqual([]);
+    expect(harness.readSampleInputs).toEqual([]);
+    expect(harness.readRangesInputs).toEqual([]);
+  });
 });

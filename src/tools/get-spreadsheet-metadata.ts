@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { ToolExecutionContext, UnboundToolDefinition } from "../server.js";
 
 const inputSchema = z.object({
-  spreadsheet: z.string().trim().min(1).max(2048)
+  spreadsheet: z.string().min(1).max(2048).refine((value) => value.trim() === value)
 }).strict();
 
 export function createGetSpreadsheetMetadataTool(): UnboundToolDefinition {

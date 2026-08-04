@@ -872,4 +872,19 @@ describe("production OAuth dependencies", () => {
     await expectSafeError(() => request, "GOOGLE_API_ERROR", [REFRESH_TOKEN, CLIENT_SECRET]);
     expect(fetchSignal?.aborted).toBe(true);
   });
+
+  it("closes a pending authorization listener and clears its timer", async () => {
+    const harness = createOAuthHarness();
+
+    await harness.coordinator.start(true);
+    expect(harness.listenerCloseCount()).toBe(0);
+    expect(harness.activeTimerCount()).toBe(1);
+
+    await harness.coordinator.close();
+
+    expect(harness.listenerCloseCount()).toBe(1);
+    expect(harness.activeTimerCount()).toBe(0);
+    await harness.coordinator.close();
+    expect(harness.listenerCloseCount()).toBe(1);
+  });
 });

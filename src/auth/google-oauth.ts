@@ -285,6 +285,24 @@ export class GoogleOAuthCoordinator {
 
   constructor(private readonly dependencies: GoogleOAuthDependencies) {}
 
+  async close(): Promise<void> {
+    const starting = this.starting;
+
+    if (starting) {
+      try {
+        await starting;
+      } catch {
+        // Startup already records a safe failure and disposes partial resources.
+      }
+    }
+
+    const session = this.pending;
+
+    if (session) {
+      await this.disposeSession(session);
+    }
+  }
+
   async start(confirm: true): Promise<ConnectGoogleResult> {
     if (confirm !== true) {
       throw new GoogleOAuthError("AUTH_REQUIRED");

@@ -2,8 +2,8 @@ import { z } from "zod";
 import type { ToolExecutionContext, UnboundToolDefinition } from "../server.js";
 
 const inputSchema = z.object({
-  spreadsheet: z.string().trim().min(1).max(2048),
-  sheetName: z.string().trim().min(1).optional(),
+  spreadsheet: z.string().min(1).max(2048).refine((value) => value.trim() === value),
+  sheetName: z.string().min(1).max(200).refine((value) => value.trim() === value).optional(),
   maxRows: z.number().int().min(1).max(200).default(50).optional(),
   maxColumns: z.number().int().min(1).max(50).default(25).optional(),
   valueMode: z.enum(["typed", "display", "formula"]).default("typed").optional()

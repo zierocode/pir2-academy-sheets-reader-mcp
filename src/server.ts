@@ -156,7 +156,7 @@ const SAFE_ERRORS: Record<ErrorCode, SafeError> = {
 };
 
 export type ToolServices = {
-  oauth: Pick<GoogleOAuthCoordinator, "start" | "status">;
+  oauth: Pick<GoogleOAuthCoordinator, "start" | "status"> & { close?: () => Promise<void> };
   sheets: Pick<SheetsReader, "getMetadata" | "readSample" | "readRanges">;
 };
 
@@ -299,16 +299,22 @@ export function createProductionMcpServer(
 export async function runStdioServer(
   environment: NodeJS.ProcessEnv = process.env
 ): Promise<void> {
-  const server = createProductionMcpServer(environment);
+  const services = createProductionToolServices(environment);
+  const server = createMcpServer(services);
   const transport = new StdioServerTransport();
   let closing: Promise<void> | undefined;
 
   const close = (): Promise<void> => {
-    closing ??= server.close();
+    closing ??= (async () => {
+      await services.oauth.close?.();
+      await server.close();
+    })();
     return closing;
   };
   const closeOnSignal = (): void => {
-    void close();
+    void close().finally(() => {
+      process.exitCode = 0;
+    });
   };
 
   process.once("SIGINT", closeOnSignal);
@@ -316,6 +322,7 @@ export async function runStdioServer(
   transport.onclose = () => {
     process.off("SIGINT", closeOnSignal);
     process.off("SIGTERM", closeOnSignal);
+    void close();
   };
 
   await server.connect(transport);
@@ -340,7 +347,14 @@ function createToolExecutionContext(
       }
 
       if (!status.credentialsConfigured || status.status === "not_configured") {
+        if (status.status === "failed" && status.lastErrorCode && ERROR_CODES.has(status.lastErrorCode)) {
+          return failureResult(status.lastErrorCode, requestId);
+        }
         return failureResult("CREDENTIALS_NOT_CONFIGURED", requestId);
+      }
+
+      if (status.status === "failed" && status.lastErrorCode && ERROR_CODES.has(status.lastErrorCode)) {
+        return failureResult(status.lastErrorCode, requestId);
       }
 
       if (status.status === "reconnect_required") {
