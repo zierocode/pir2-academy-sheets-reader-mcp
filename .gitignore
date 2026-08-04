@@ -1,0 +1,10 @@
+node_modules/
+server/
+coverage/
+.DS_Store
+*.log
+npm-debug.log*
+.env
+.env.*
+*.local
+*.mcpb

@@ -1,0 +1,10 @@
+.git/
+.github/
+node_modules/
+tests/
+coverage/
+*.log
+.env
+.env.*
+*.local
+*.mcpb

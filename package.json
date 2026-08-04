@@ -1,0 +1,37 @@
+{
+  "name": "pir2-academy-sheets-reader",
+  "version": "0.1.0",
+  "description": "Read-only local MCP for PiR2 Academy Sheets Reader",
+  "license": "MIT",
+  "type": "module",
+  "main": "./server/index.js",
+  "exports": "./server/index.js",
+  "files": [
+    "server",
+    "README.md",
+    "LICENSE",
+    "SECURITY.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zierocode/pir2-academy-sheets-reader-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zierocode/pir2-academy-sheets-reader-mcp/issues"
+  },
+  "homepage": "https://github.com/zierocode/pir2-academy-sheets-reader-mcp#readme",
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm run test"
+  },
+  "devDependencies": {
+    "@types/node": "22.18.6",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
+  }
+}
