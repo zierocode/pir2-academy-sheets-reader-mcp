@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { createConnection, type Socket } from "node:net";
 import { describe, expect, it, vi } from "vitest";
 import type { DesktopCredentials } from "../../src/auth/credential-file.js";
 import { TokenStoreUnavailableError, type StoredGoogleToken, type TokenStore } from "../../src/auth/token-store.js";
@@ -8,9 +9,9 @@ import {
   createGoogleTokenClient,
   createNodeLoopbackListenerFactory,
   type AuthStatus,
-  type ConnectGoogleResult,
   type GoogleOAuthDependencies,
-  type LoopbackCallback
+  type LoopbackCallback,
+  type LoopbackListenerFactory
 } from "../../src/auth/google-oauth.js";
 
 const NOW = Date.UTC(2026, 7, 4, 8, 0, 0);
@@ -44,6 +45,8 @@ type OAuthHarnessOptions = {
   exchangeToken?: StoredGoogleToken;
   refreshToken?: StoredGoogleToken;
   redirectUri?: string;
+  listener?: LoopbackListenerFactory;
+  listenerClose?: () => Promise<void>;
 };
 
 type OAuthHarness = {
@@ -127,7 +130,7 @@ function createOAuthHarness(options: OAuthHarnessOptions = {}): OAuthHarness {
         timers.delete(timerId as number);
       }
     },
-    listener: {
+    listener: options.listener ?? {
       listen: async (request) => {
         if (options.listenerError) {
           throw options.listenerError;
@@ -140,6 +143,7 @@ function createOAuthHarness(options: OAuthHarnessOptions = {}): OAuthHarness {
           redirectUri: options.redirectUri ?? "http://127.0.0.1:49152/oauth/callback",
           close: async () => {
             closeCount += 1;
+            await options.listenerClose?.();
           }
         };
       }
@@ -260,8 +264,105 @@ async function expectSafeError(
   return error;
 }
 
+function getLoopbackResponse(url: string): Promise<{ statusCode: number; body: string }> {
+  return new Promise((resolve, reject) => {
+    const callbackUrl = new URL(url);
+    const socket = createConnection({
+      host: callbackUrl.hostname,
+      port: Number(callbackUrl.port)
+    });
+    let response = "";
+
+    const fail = (error: Error) => {
+      socket.off("data", onData);
+      reject(error);
+    };
+    const onData = (chunk: string | Buffer) => {
+      response += chunk.toString();
+
+      const [statusLine, body = ""] = response.split("\r\n\r\n", 2);
+
+      if (!statusLine || !body.includes("return to Claude")) {
+        return;
+      }
+
+      const statusCode = Number(statusLine.split(" ")[1]);
+
+      if (!Number.isInteger(statusCode)) {
+        fail(new Error("Loopback listener returned an invalid HTTP status."));
+        return;
+      }
+
+      socket.off("error", fail);
+      socket.off("data", onData);
+      resolve({ statusCode, body });
+    };
+
+    socket.setEncoding("utf8");
+    socket.once("connect", () => {
+      socket.write(
+        `GET ${callbackUrl.pathname}${callbackUrl.search} HTTP/1.1\r\nHost: ${callbackUrl.host}\r\nConnection: close\r\n\r\n`
+      );
+    });
+    socket.once("error", fail);
+    socket.on("data", onData);
+  });
+}
+
+function holdLoopbackConnection(url: string): Promise<Socket> {
+  return new Promise((resolve, reject) => {
+    const callbackUrl = new URL(url);
+    const socket = createConnection({
+      host: callbackUrl.hostname,
+      port: Number(callbackUrl.port)
+    });
+
+    const fail = (error: Error) => {
+      socket.destroy();
+      reject(error);
+    };
+
+    socket.once("connect", () => {
+      socket.off("error", fail);
+      socket.on("error", () => undefined);
+      socket.write(`GET /held-open HTTP/1.1\r\nHost: ${callbackUrl.host}\r\n`);
+      resolve(socket);
+    });
+    socket.once("error", fail);
+  });
+}
+
+function waitForSocketClose(socket: Socket): Promise<void> {
+  if (socket.destroyed) {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve) => {
+    socket.once("close", () => resolve());
+  });
+}
+
+function settleWithin<Result>(operation: Promise<Result>, timeoutMs: number): Promise<Result> {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error(`Operation did not settle within ${timeoutMs}ms.`));
+    }, timeoutMs);
+
+    void operation.then(
+      (result) => {
+        clearTimeout(timeout);
+        resolve(result);
+      },
+      (error: unknown) => {
+        clearTimeout(timeout);
+        reject(error);
+      }
+    );
+  });
+}
+
 describe("GoogleOAuthCoordinator", () => {
-  it("starts a background PKCE authorization session and persists its successful callback", async () => {
+  it("keeps Google connection pending through its callback and returns a final connected result", async () => {
     const harness = createOAuthHarness();
 
     const beforeStart: AuthStatus = await harness.coordinator.status();
@@ -272,14 +373,14 @@ describe("GoogleOAuthCoordinator", () => {
       scopeGranted: false
     });
 
-    const started: ConnectGoogleResult = await harness.coordinator.start(true);
-
-    expect(started).toEqual({
-      authorizationStarted: true,
-      status: "waiting_for_authorization",
-      projectId: PROJECT_ID,
-      authorizationExpiresAt: new Date(NOW + AUTHORIZATION_TIMEOUT_MS).toISOString()
+    let settled = false;
+    const connected = harness.coordinator.start(true, { waitForAuthorization: true }).then((result) => {
+      settled = true;
+      return result;
     });
+
+    await vi.waitFor(() => expect(harness.browserUrls).toHaveLength(1));
+    expect(settled).toBe(false);
     expect(harness.listenerOptions()).toEqual({ host: "127.0.0.1", port: 0 });
     expect(harness.scheduledDelays).toEqual([AUTHORIZATION_TIMEOUT_MS]);
     expect(harness.activeTimerCount()).toBe(1);
@@ -309,6 +410,13 @@ describe("GoogleOAuthCoordinator", () => {
 
     const state = authorizationState(harness);
     const callbackHtml = await harness.fireCallback({ code: AUTHORIZATION_CODE, state });
+    await expect(connected).resolves.toEqual({
+      authorizationStarted: true,
+      status: "connected",
+      projectId: PROJECT_ID,
+      scopeGranted: true,
+      tokenExpiresAt: new Date(NOW + 3_600_000).toISOString()
+    });
     const exchange = harness.exchangeInputs[0] as {
       code: string;
       verifier: string;
@@ -350,6 +458,294 @@ describe("GoogleOAuthCoordinator", () => {
       tokenType: "Bearer",
       expiryDate: NOW + 3_600_000
     });
+  });
+
+  it("settles the waiting connection before a production callback listener closes its active socket", async () => {
+    const harness = createOAuthHarness({ listener: createNodeLoopbackListenerFactory() });
+    const connected = harness.coordinator.start(true, { waitForAuthorization: true });
+    let heldSocket: Socket | undefined;
+
+    try {
+      await vi.waitFor(() => expect(harness.browserUrls).toHaveLength(1));
+      const redirectUri = new URL(harness.browserUrls[0]).searchParams.get("redirect_uri");
+      expect(redirectUri).toBeDefined();
+
+      const callbackUrl = new URL(redirectUri!);
+      const state = authorizationState(harness);
+      heldSocket = await holdLoopbackConnection(callbackUrl.toString());
+
+      callbackUrl.searchParams.set("code", AUTHORIZATION_CODE);
+      callbackUrl.searchParams.set("state", state);
+
+      const callbackResponse = await getLoopbackResponse(callbackUrl.toString());
+
+      expect(callbackResponse.statusCode).toBe(200);
+      expect(callbackResponse.body).toContain("return to Claude");
+      expectNoSensitiveData(callbackResponse.body, [AUTHORIZATION_CODE, state, CLIENT_SECRET]);
+      await expect(settleWithin(connected, 1_000)).resolves.toMatchObject({
+        authorizationStarted: true,
+        status: "connected",
+        projectId: PROJECT_ID
+      });
+      await expect(settleWithin(harness.coordinator.close(), 1_000)).resolves.toBeUndefined();
+      await expect(settleWithin(waitForSocketClose(heldSocket), 1_000)).resolves.toBeUndefined();
+    } finally {
+      if (heldSocket && !heldSocket.destroyed) {
+        const closed = waitForSocketClose(heldSocket);
+        heldSocket.destroy();
+        await closed;
+      }
+
+      await harness.coordinator.close();
+    }
+  });
+
+  it("awaits listener disposal that began before close observes the settled session", async () => {
+    let releaseListenerClose: (() => void) | undefined;
+    const listenerClose = new Promise<void>((resolve) => {
+      releaseListenerClose = resolve;
+    });
+    const harness = createOAuthHarness({ listenerClose: async () => listenerClose });
+    const connected = harness.coordinator.start(true, { waitForAuthorization: true });
+    let callback: Promise<string> | undefined;
+
+    try {
+      await vi.waitFor(() => expect(harness.browserUrls).toHaveLength(1));
+      callback = harness.fireCallback({
+        code: AUTHORIZATION_CODE,
+        state: authorizationState(harness)
+      });
+
+      await expect(connected).resolves.toMatchObject({
+        authorizationStarted: true,
+        status: "connected",
+        projectId: PROJECT_ID
+      });
+
+      const closing = harness.coordinator.close();
+      let closeSettled = false;
+      void closing.then(() => {
+        closeSettled = true;
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(closeSettled).toBe(false);
+      releaseListenerClose?.();
+      await expect(closing).resolves.toBeUndefined();
+      await expect(callback).resolves.toContain("return to Claude");
+    } finally {
+      releaseListenerClose?.();
+      await callback;
+      await harness.coordinator.close();
+    }
+  });
+
+  it("cancels a stalled browser launch when its only waiting caller cancels", async () => {
+    let releaseBrowser: (() => void) | undefined;
+    const harness = createOAuthHarness({
+      browserOpen: async () =>
+        new Promise<void>((resolve) => {
+          releaseBrowser = resolve;
+        })
+    });
+    const caller = new AbortController();
+    const waiting = harness.coordinator.start(true, {
+      waitForAuthorization: true,
+      signal: caller.signal
+    });
+
+    try {
+      await vi.waitFor(() => expect(harness.activeTimerCount()).toBe(1));
+      caller.abort();
+
+      await expect(
+        settleWithin(expectSafeError(() => waiting, "AUTH_CANCELLED", [CLIENT_SECRET]), 1_000)
+      ).resolves.toBeInstanceOf(Error);
+      await vi.waitFor(() => expect(harness.listenerCloseCount()).toBe(1));
+      expect(harness.activeTimerCount()).toBe(0);
+      expect(await harness.coordinator.status()).toMatchObject({
+        status: "failed",
+        lastErrorCode: "AUTH_CANCELLED"
+      });
+    } finally {
+      releaseBrowser?.();
+      await harness.coordinator.close();
+    }
+  });
+
+  it("retries with a new session after cancelling a permanently stalled browser launch", async () => {
+    let browserOpenCount = 0;
+    const harness = createOAuthHarness({
+      browserOpen: async () => {
+        browserOpenCount += 1;
+
+        if (browserOpenCount === 1) {
+          return new Promise<void>(() => undefined);
+        }
+      }
+    });
+    const caller = new AbortController();
+    const stalled = harness.coordinator.start(true, {
+      waitForAuthorization: true,
+      signal: caller.signal
+    });
+
+    try {
+      await vi.waitFor(() => expect(harness.activeTimerCount()).toBe(1));
+      caller.abort();
+
+      await expect(
+        settleWithin(expectSafeError(() => stalled, "AUTH_CANCELLED", [CLIENT_SECRET]), 1_000)
+      ).resolves.toBeInstanceOf(Error);
+      await vi.waitFor(() => expect(harness.listenerCloseCount()).toBe(1));
+
+      const retry = harness.coordinator.start(true, { waitForAuthorization: true });
+
+      await settleWithin(vi.waitFor(() => expect(harness.browserUrls).toHaveLength(2)), 1_000);
+      expect(browserOpenCount).toBe(2);
+      expect(harness.activeTimerCount()).toBe(1);
+
+      const retryState = new URL(harness.browserUrls[1]!).searchParams.get("state") ?? "";
+      const callbackHtml = await harness.fireCallback({
+        code: AUTHORIZATION_CODE,
+        state: retryState
+      });
+
+      await expect(retry).resolves.toMatchObject({
+        authorizationStarted: true,
+        status: "connected",
+        projectId: PROJECT_ID
+      });
+      expect(callbackHtml).toContain("return to Claude");
+      expect(harness.listenerCloseCount()).toBe(2);
+      expect(harness.activeTimerCount()).toBe(0);
+    } finally {
+      await harness.coordinator.close();
+    }
+  });
+
+  it("keeps a stalled launch open for a shared waiting caller", async () => {
+    let releaseBrowser: (() => void) | undefined;
+    const harness = createOAuthHarness({
+      browserOpen: async () =>
+        new Promise<void>((resolve) => {
+          releaseBrowser = resolve;
+        })
+    });
+    const cancelledCaller = new AbortController();
+    const cancelledWaiter = harness.coordinator.start(true, {
+      waitForAuthorization: true,
+      signal: cancelledCaller.signal
+    });
+    const liveWaiter = harness.coordinator.start(true, { waitForAuthorization: true });
+
+    void liveWaiter.catch(() => undefined);
+
+    try {
+      await vi.waitFor(() => expect(harness.activeTimerCount()).toBe(1));
+      cancelledCaller.abort();
+
+      await expect(
+        settleWithin(expectSafeError(() => cancelledWaiter, "AUTH_CANCELLED", [CLIENT_SECRET]), 1_000)
+      ).resolves.toBeInstanceOf(Error);
+      expect(harness.listenerCloseCount()).toBe(0);
+      expect(harness.activeTimerCount()).toBe(1);
+
+      releaseBrowser?.();
+      const callbackHtml = await harness.fireCallback({
+        code: AUTHORIZATION_CODE,
+        state: authorizationState(harness)
+      });
+
+      await expect(liveWaiter).resolves.toMatchObject({
+        authorizationStarted: true,
+        status: "connected",
+        projectId: PROJECT_ID
+      });
+      expect(callbackHtml).toContain("return to Claude");
+      expect(harness.listenerCloseCount()).toBe(1);
+      expect(harness.activeTimerCount()).toBe(0);
+    } finally {
+      releaseBrowser?.();
+      await harness.coordinator.close();
+    }
+  });
+
+  it("keeps a shared authorization session for a live waiter when another caller cancels", async () => {
+    const harness = createOAuthHarness();
+    const cancelledCaller = new AbortController();
+    const liveCaller = new AbortController();
+    const cancelledWaiter = harness.coordinator.start(true, {
+      waitForAuthorization: true,
+      signal: cancelledCaller.signal
+    });
+    const liveWaiter = harness.coordinator.start(true, {
+      waitForAuthorization: true,
+      signal: liveCaller.signal
+    });
+
+    void liveWaiter.catch(() => undefined);
+
+    try {
+      await vi.waitFor(() => expect(harness.browserUrls).toHaveLength(1));
+      cancelledCaller.abort();
+
+      await expect(
+        settleWithin(expectSafeError(() => cancelledWaiter, "AUTH_CANCELLED", [CLIENT_SECRET]), 1_000)
+      ).resolves.toBeInstanceOf(Error);
+      expect(harness.listenerCloseCount()).toBe(0);
+      expect(harness.activeTimerCount()).toBe(1);
+      expect(await harness.coordinator.status()).toMatchObject({
+        status: "waiting_for_authorization",
+        projectId: PROJECT_ID
+      });
+
+      const callbackHtml = await harness.fireCallback({
+        code: AUTHORIZATION_CODE,
+        state: authorizationState(harness)
+      });
+
+      await expect(liveWaiter).resolves.toMatchObject({
+        authorizationStarted: true,
+        status: "connected",
+        projectId: PROJECT_ID
+      });
+      expect(callbackHtml).toContain("return to Claude");
+      expect(harness.listenerCloseCount()).toBe(1);
+      expect(harness.activeTimerCount()).toBe(0);
+    } finally {
+      await harness.coordinator.close();
+    }
+  });
+
+  it("cancels the underlying authorization session when its final waiter cancels", async () => {
+    const harness = createOAuthHarness();
+    const caller = new AbortController();
+    const waiting = harness.coordinator.start(true, {
+      waitForAuthorization: true,
+      signal: caller.signal
+    });
+
+    try {
+      await vi.waitFor(() => expect(harness.browserUrls).toHaveLength(1));
+      caller.abort();
+
+      await expect(
+        settleWithin(expectSafeError(() => waiting, "AUTH_CANCELLED", [CLIENT_SECRET]), 1_000)
+      ).resolves.toBeInstanceOf(Error);
+      await vi.waitFor(() => expect(harness.listenerCloseCount()).toBe(1));
+      expect(harness.activeTimerCount()).toBe(0);
+      expect(await harness.coordinator.status()).toEqual({
+        credentialsConfigured: true,
+        status: "failed",
+        projectId: PROJECT_ID,
+        scopeGranted: false,
+        lastErrorCode: "AUTH_CANCELLED"
+      });
+    } finally {
+      await harness.coordinator.close();
+    }
   });
 
   it("requires literal learner confirmation before allocating an authorization listener", async () => {
@@ -435,11 +831,14 @@ describe("GoogleOAuthCoordinator", () => {
 
   it("expires an unanswered authorization session after 180 seconds", async () => {
     const harness = createOAuthHarness();
+    const timedOut = harness.coordinator.start(true, { waitForAuthorization: true });
+    const timeoutFailure = expectSafeError(() => timedOut, "AUTH_TIMEOUT", [CLIENT_SECRET]);
 
-    await harness.coordinator.start(true);
+    await vi.waitFor(() => expect(harness.browserUrls).toHaveLength(1));
     expect(harness.scheduledDelays).toEqual([AUTHORIZATION_TIMEOUT_MS]);
 
     await harness.fireTimeout();
+    await timeoutFailure;
 
     expect(await harness.coordinator.status()).toEqual({
       credentialsConfigured: true,
@@ -592,7 +991,11 @@ describe("GoogleOAuthCoordinator", () => {
     const listenerFailure = new Error(`listener failed for ${CLIENT_SECRET}`);
     const harness = createOAuthHarness({ listenerError: listenerFailure });
 
-    await expectSafeError(() => harness.coordinator.start(true), "NETWORK_ERROR", [CLIENT_SECRET]);
+    await expectSafeError(
+      () => harness.coordinator.start(true, { waitForAuthorization: true }),
+      "NETWORK_ERROR",
+      [CLIENT_SECRET]
+    );
     expect(harness.browserUrls).toEqual([]);
     expect(harness.activeTimerCount()).toBe(0);
     expect(await harness.coordinator.status()).toEqual({
@@ -620,7 +1023,11 @@ describe("GoogleOAuthCoordinator", () => {
     const browserFailure = new Error(`browser failed for ${CLIENT_SECRET}`);
     const harness = createOAuthHarness({ browserError: browserFailure });
 
-    await expectSafeError(() => harness.coordinator.start(true), "NETWORK_ERROR", [CLIENT_SECRET]);
+    await expectSafeError(
+      () => harness.coordinator.start(true, { waitForAuthorization: true }),
+      "NETWORK_ERROR",
+      [CLIENT_SECRET]
+    );
     expect(harness.listenerCloseCount()).toBe(1);
     expect(harness.activeTimerCount()).toBe(0);
     expect(await harness.coordinator.status()).toEqual({

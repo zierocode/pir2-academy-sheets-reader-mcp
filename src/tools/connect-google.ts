@@ -17,7 +17,12 @@ export function createConnectGoogleTool(): UnboundToolDefinition {
         return context.failure("AUTH_REQUIRED");
       }
 
-      return context.success(await context.services.oauth.start(parsed.data.confirm));
+      return context.success(
+        await context.services.oauth.start(parsed.data.confirm, {
+          waitForAuthorization: true,
+          ...(context.signal === undefined ? {} : { signal: context.signal })
+        })
+      );
     }
   };
 }

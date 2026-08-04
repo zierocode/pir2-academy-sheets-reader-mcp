@@ -50,11 +50,26 @@ export type AuthStatus = {
   lastErrorCode?: ErrorCode;
 };
 
-export type ConnectGoogleResult = {
+type PendingConnectGoogleResult = {
   authorizationStarted: true;
   status: "waiting_for_authorization";
   projectId: string;
   authorizationExpiresAt: string;
+};
+
+type ConnectedGoogleResult = {
+  authorizationStarted: true;
+  status: "connected";
+  projectId: string;
+  scopeGranted: boolean;
+  tokenExpiresAt?: string;
+};
+
+export type ConnectGoogleResult = PendingConnectGoogleResult | ConnectedGoogleResult;
+
+export type StartGoogleOptions = {
+  waitForAuthorization?: boolean;
+  signal?: AbortSignal;
 };
 
 export type DesktopCredentialsProvider = {
@@ -159,9 +174,17 @@ type PendingSession = {
   verifier: string;
   timer: unknown;
   abortController: AbortController;
-  result: ConnectGoogleResult;
+  result: PendingConnectGoogleResult;
+  completion: Promise<SessionCompletion>;
+  settle: (completion: SessionCompletion) => void;
+  waiters: Set<object>;
+  disposal?: Promise<void>;
   settled: boolean;
 };
+
+type SessionCompletion =
+  | { type: "success"; result: ConnectedGoogleResult }
+  | { type: "failure"; code: ErrorCode };
 
 export class GoogleOAuthError extends Error {
   readonly code: ErrorCode;
@@ -280,7 +303,9 @@ export function createProductionGoogleOAuthDependencies(
 
 export class GoogleOAuthCoordinator {
   private pending: PendingSession | undefined;
-  private starting: Promise<ConnectGoogleResult> | undefined;
+  private starting: Promise<PendingSession> | undefined;
+  private readonly startingWaiters = new Set<object>();
+  private readonly disposals = new Set<Promise<void>>();
   private lastFailure: FailureState | undefined;
   private closed = false;
 
@@ -292,20 +317,53 @@ export class GoogleOAuthCoordinator {
     const session = this.pending;
 
     if (session) {
-      await this.disposeSession(session);
+      await this.finishFailure(session, "AUTH_CANCELLED", "failed");
     }
+
+    await this.waitForDisposals();
   }
 
-  async start(confirm: true): Promise<ConnectGoogleResult> {
+  async start(
+    confirm: true,
+    options: StartGoogleOptions = {}
+  ): Promise<ConnectGoogleResult> {
     if (this.closed) {
       throw new GoogleOAuthError("AUTH_CANCELLED");
     }
     if (confirm !== true) {
       throw new GoogleOAuthError("AUTH_REQUIRED");
     }
+    if (options.waitForAuthorization && options.signal?.aborted) {
+      throw new GoogleOAuthError("AUTH_CANCELLED");
+    }
 
+    if (!options.waitForAuthorization) {
+      return (await this.getOrStartSession()).result;
+    }
+
+    const startingWaiter = {};
+    this.startingWaiters.add(startingWaiter);
+    const starting = this.getOrStartSession();
+    let attachedToSession = false;
+
+    try {
+      const session = await waitForAbortable(starting, options.signal);
+
+      this.startingWaiters.delete(startingWaiter);
+      attachedToSession = true;
+
+      return this.waitForSession(session, options.signal);
+    } finally {
+      if (!attachedToSession) {
+        this.startingWaiters.delete(startingWaiter);
+        this.cancelUnobservedStartingSession(starting);
+      }
+    }
+  }
+
+  private async getOrStartSession(): Promise<PendingSession> {
     if (this.pending) {
-      return this.pending.result;
+      return this.pending;
     }
 
     if (this.starting) {
@@ -415,7 +473,7 @@ export class GoogleOAuthCoordinator {
     };
   }
 
-  private async startSession(): Promise<ConnectGoogleResult> {
+  private async startSession(): Promise<PendingSession> {
     let credentials: DesktopCredentials | null;
 
     try {
@@ -472,12 +530,13 @@ export class GoogleOAuthCoordinator {
       const authorizationExpiresAt = new Date(
         this.dependencies.clock.now() + AUTHORIZATION_TIMEOUT_MS
       ).toISOString();
-      const result: ConnectGoogleResult = {
+      const result: PendingConnectGoogleResult = {
         authorizationStarted: true,
         status: "waiting_for_authorization",
         projectId: credentials.projectId,
         authorizationExpiresAt
       };
+      const { completion, settle } = createSessionCompletion();
       const timer = this.dependencies.timers.setTimeout(() => {
         if (session) {
           void this.expireSession(session);
@@ -492,6 +551,9 @@ export class GoogleOAuthCoordinator {
         timer,
         abortController: new AbortController(),
         result,
+        completion,
+        settle,
+        waiters: new Set(),
         settled: false
       };
       this.pending = session;
@@ -501,21 +563,20 @@ export class GoogleOAuthCoordinator {
         authorizationUrl(credentials, listener.redirectUri, state, pkce.challenge)
       );
 
-      if (this.closed || !this.isActiveSession(session)) {
-        throw new GoogleOAuthError("AUTH_CANCELLED");
-      }
-
-      return result;
+      return session;
     } catch (error) {
       const code = knownErrorCode(error) ?? "NETWORK_ERROR";
 
       if (session) {
-        await this.disposeSession(session);
-      } else if (listener) {
-        await closeQuietly(listener);
+        await this.finishFailure(session, code, "failed");
+      } else {
+        if (listener) {
+          await closeQuietly(listener);
+        }
+
+        this.recordFailure(code, "failed");
       }
 
-      this.recordFailure(code, "failed");
       throw new GoogleOAuthError(code);
     }
   }
@@ -578,7 +639,7 @@ export class GoogleOAuthCoordinator {
       }
 
       this.respond(callback, true);
-      await this.finishSuccess(session);
+      await this.finishSuccess(session, token);
     } catch (error) {
       if (!this.isActiveSession(session)) {
         return;
@@ -600,8 +661,14 @@ export class GoogleOAuthCoordinator {
     await this.finishFailure(session, "AUTH_TIMEOUT", "failed");
   }
 
-  private async finishSuccess(session: PendingSession): Promise<void> {
+  private async finishSuccess(session: PendingSession, token: StoredGoogleToken): Promise<void> {
+    if (session.settled) {
+      return;
+    }
+
     this.lastFailure = undefined;
+    const result = connectedResult(session.credentials, token);
+    this.settleSession(session, { type: "success", result });
     await this.disposeSession(session);
   }
 
@@ -610,11 +677,16 @@ export class GoogleOAuthCoordinator {
     code: ErrorCode,
     status: FailureState["status"]
   ): Promise<void> {
+    if (session.settled) {
+      return;
+    }
+
     this.recordFailure(code, status);
+    this.settleSession(session, { type: "failure", code });
     await this.disposeSession(session);
   }
 
-  private async disposeSession(session: PendingSession): Promise<void> {
+  private settleSession(session: PendingSession, completion: SessionCompletion): void {
     if (session.settled) {
       return;
     }
@@ -627,7 +699,85 @@ export class GoogleOAuthCoordinator {
       this.pending = undefined;
     }
 
-    await closeQuietly(session.listener);
+    session.settle(completion);
+  }
+
+  private async disposeSession(session: PendingSession): Promise<void> {
+    if (!session.disposal) {
+      const disposal = closeQuietly(session.listener);
+
+      session.disposal = disposal;
+      this.disposals.add(disposal);
+      void disposal.then(
+        () => this.disposals.delete(disposal),
+        () => this.disposals.delete(disposal)
+      );
+    }
+
+    await session.disposal;
+  }
+
+  private async waitForSession(
+    session: PendingSession,
+    signal: AbortSignal | undefined
+  ): Promise<ConnectedGoogleResult> {
+    const waiter = {};
+    session.waiters.add(waiter);
+
+    try {
+      const completion = await waitForAbortable(session.completion, signal);
+
+      if (completion.type === "failure") {
+        throw new GoogleOAuthError(completion.code);
+      }
+
+      return completion.result;
+    } finally {
+      session.waiters.delete(waiter);
+
+      if (signal?.aborted) {
+        this.cancelUnobservedSession(session);
+      }
+    }
+  }
+
+  private cancelUnobservedSession(session: PendingSession): boolean {
+    if (
+      !this.isActiveSession(session) ||
+      session.waiters.size > 0 ||
+      this.startingWaiters.size > 0
+    ) {
+      return false;
+    }
+
+    const starting = this.starting;
+    void this.finishFailure(session, "AUTH_CANCELLED", "failed");
+    this.detachStartingSession(starting);
+    return true;
+  }
+
+  private cancelUnobservedStartingSession(starting: Promise<PendingSession>): void {
+    if (this.pending) {
+      this.cancelUnobservedSession(this.pending);
+      return;
+    }
+
+    void starting.then(
+      (session) => this.cancelUnobservedSession(session),
+      () => undefined
+    );
+  }
+
+  private detachStartingSession(starting: Promise<PendingSession> | undefined): void {
+    if (starting && this.starting === starting) {
+      this.starting = undefined;
+    }
+  }
+
+  private async waitForDisposals(): Promise<void> {
+    while (this.disposals.size > 0) {
+      await Promise.all(this.disposals);
+    }
   }
 
   private async refreshToken(
@@ -713,6 +863,72 @@ export class GoogleOAuthCoordinator {
   }
 }
 
+function createSessionCompletion(): {
+  completion: Promise<SessionCompletion>;
+  settle: (completion: SessionCompletion) => void;
+} {
+  let settle: (completion: SessionCompletion) => void = () => undefined;
+  const completion = new Promise<SessionCompletion>((resolve) => {
+    settle = resolve;
+  });
+
+  return { completion, settle };
+}
+
+function waitForAbortable<Value>(
+  operation: Promise<Value>,
+  signal: AbortSignal | undefined
+): Promise<Value> {
+  if (!signal) {
+    return operation;
+  }
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (callback: () => void) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      signal.removeEventListener("abort", abort);
+      callback();
+    };
+    const abort = () => {
+      finish(() => reject(new GoogleOAuthError("AUTH_CANCELLED")));
+    };
+
+    signal.addEventListener("abort", abort, { once: true });
+    operation.then(
+      (result) => {
+        finish(() => resolve(result));
+      },
+      (error: unknown) => {
+        finish(() => reject(error));
+      }
+    );
+
+    if (signal.aborted) {
+      abort();
+    }
+  });
+}
+
+function connectedResult(
+  credentials: DesktopCredentials,
+  token: StoredGoogleToken
+): ConnectedGoogleResult {
+  return {
+    authorizationStarted: true,
+    status: "connected",
+    projectId: credentials.projectId,
+    scopeGranted: hasReadOnlyScope(token.scope),
+    ...(token.expiryDate === undefined
+      ? {}
+      : { tokenExpiresAt: new Date(token.expiryDate).toISOString() })
+  };
+}
+
 async function createNodeLoopbackListener(
   request: LoopbackListenerRequest
 ): Promise<LoopbackListener> {
@@ -738,10 +954,14 @@ async function createNodeLoopbackListener(
 
   try {
     const port = await listenOnLoopback(server);
+    let closing: Promise<void> | undefined;
 
     return {
       redirectUri: `http://127.0.0.1:${port}/oauth/callback`,
-      close: async () => closeNodeServer(server)
+      close: () => {
+        closing ??= closeNodeServer(server);
+        return closing;
+      }
     };
   } catch {
     await closeNodeServer(server);
@@ -849,6 +1069,7 @@ function writeSafeHtml(response: ServerResponse, statusCode: number, html: strin
 
   response.writeHead(statusCode, {
     "cache-control": "no-store",
+    connection: "close",
     "content-type": "text/html; charset=utf-8",
     "x-content-type-options": "nosniff"
   });
@@ -861,7 +1082,18 @@ async function closeNodeServer(server: Server): Promise<void> {
   }
 
   await new Promise<void>((resolve) => {
-    server.close(() => resolve());
+    try {
+      server.close(() => resolve());
+      setImmediate(() => {
+        try {
+          server.closeAllConnections();
+        } catch {
+          // A concurrent close already released every loopback connection.
+        }
+      });
+    } catch {
+      resolve();
+    }
   });
 }
 
