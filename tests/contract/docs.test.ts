@@ -94,6 +94,7 @@ describe("CI and release contracts", () => {
     expect(workflow).toMatch(/tags:/);
     expect(workflow).toContain("v*");
     expect(workflow).toContain("contents: write");
+    expect(workflow).toContain("actions: read");
     expect(workflow).toContain("npm run release:guard");
     expect(workflow).toContain("fetch-depth: 0");
     expect(workflow).toContain("--event push");
