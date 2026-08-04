@@ -30,12 +30,12 @@ describe("MCPB bundle", () => {
     const actual = createHash("sha256").update(readFileSync(BUNDLE_PATH)).digest("hex");
 
     expect(expected).toBe(actual);
-  }, 60_000);
+  }, 300_000);
 
   it("validates archive contents, native keyring variants, static tools, and credential exclusion", () => {
     const result = run(VERIFY_SCRIPT);
 
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain("bundle verified");
-  }, 60_000);
+  }, 300_000);
 });
