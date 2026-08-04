@@ -8,7 +8,6 @@ import {
   createGoogleTokenClient,
   createNodeLoopbackListenerFactory,
   type AuthStatus,
-  type ConnectGoogleResult,
   type GoogleOAuthDependencies,
   type LoopbackCallback
 } from "../../src/auth/google-oauth.js";
@@ -261,7 +260,7 @@ async function expectSafeError(
 }
 
 describe("GoogleOAuthCoordinator", () => {
-  it("starts a background PKCE authorization session and persists its successful callback", async () => {
+  it("keeps Google connection pending through its callback and returns a final connected result", async () => {
     const harness = createOAuthHarness();
 
     const beforeStart: AuthStatus = await harness.coordinator.status();
@@ -272,14 +271,14 @@ describe("GoogleOAuthCoordinator", () => {
       scopeGranted: false
     });
 
-    const started: ConnectGoogleResult = await harness.coordinator.start(true);
-
-    expect(started).toEqual({
-      authorizationStarted: true,
-      status: "waiting_for_authorization",
-      projectId: PROJECT_ID,
-      authorizationExpiresAt: new Date(NOW + AUTHORIZATION_TIMEOUT_MS).toISOString()
+    let settled = false;
+    const connected = harness.coordinator.start(true, { waitForAuthorization: true }).then((result) => {
+      settled = true;
+      return result;
     });
+
+    await vi.waitFor(() => expect(harness.browserUrls).toHaveLength(1));
+    expect(settled).toBe(false);
     expect(harness.listenerOptions()).toEqual({ host: "127.0.0.1", port: 0 });
     expect(harness.scheduledDelays).toEqual([AUTHORIZATION_TIMEOUT_MS]);
     expect(harness.activeTimerCount()).toBe(1);
@@ -309,6 +308,13 @@ describe("GoogleOAuthCoordinator", () => {
 
     const state = authorizationState(harness);
     const callbackHtml = await harness.fireCallback({ code: AUTHORIZATION_CODE, state });
+    await expect(connected).resolves.toEqual({
+      authorizationStarted: true,
+      status: "connected",
+      projectId: PROJECT_ID,
+      scopeGranted: true,
+      tokenExpiresAt: new Date(NOW + 3_600_000).toISOString()
+    });
     const exchange = harness.exchangeInputs[0] as {
       code: string;
       verifier: string;
@@ -435,11 +441,14 @@ describe("GoogleOAuthCoordinator", () => {
 
   it("expires an unanswered authorization session after 180 seconds", async () => {
     const harness = createOAuthHarness();
+    const timedOut = harness.coordinator.start(true, { waitForAuthorization: true });
+    const timeoutFailure = expectSafeError(() => timedOut, "AUTH_TIMEOUT", [CLIENT_SECRET]);
 
-    await harness.coordinator.start(true);
+    await vi.waitFor(() => expect(harness.browserUrls).toHaveLength(1));
     expect(harness.scheduledDelays).toEqual([AUTHORIZATION_TIMEOUT_MS]);
 
     await harness.fireTimeout();
+    await timeoutFailure;
 
     expect(await harness.coordinator.status()).toEqual({
       credentialsConfigured: true,

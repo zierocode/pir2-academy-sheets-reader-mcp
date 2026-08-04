@@ -75,9 +75,10 @@ function createHarness(status: AuthStatus = connectedStatus): Harness {
   const metadataInputs: string[] = [];
   const connect: ConnectGoogleResult = {
     authorizationStarted: true,
-    status: "waiting_for_authorization",
+    status: "connected",
     projectId: "learner-project",
-    authorizationExpiresAt: "2026-08-04T08:03:00.000Z"
+    scopeGranted: true,
+    tokenExpiresAt: "2026-08-04T09:00:00.000Z"
   };
 
   return {
@@ -197,14 +198,15 @@ describe("MCP tool contract", () => {
       ok: true,
       data: {
         authorizationStarted: true,
-        status: "waiting_for_authorization",
+        status: "connected",
         projectId: "learner-project",
-        authorizationExpiresAt: "2026-08-04T08:03:00.000Z"
+        scopeGranted: true,
+        tokenExpiresAt: "2026-08-04T09:00:00.000Z"
       },
       meta: { requestId: "request-123", retrievedAt: NOW }
     };
 
-    expect(harness.services.oauth.start).toHaveBeenCalledWith(true);
+    expect(harness.services.oauth.start).toHaveBeenCalledWith(true, { waitForAuthorization: true });
     expectMatchingContent(result, expected);
   });
 

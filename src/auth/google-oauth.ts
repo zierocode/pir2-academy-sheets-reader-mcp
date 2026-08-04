@@ -50,11 +50,25 @@ export type AuthStatus = {
   lastErrorCode?: ErrorCode;
 };
 
-export type ConnectGoogleResult = {
+type PendingConnectGoogleResult = {
   authorizationStarted: true;
   status: "waiting_for_authorization";
   projectId: string;
   authorizationExpiresAt: string;
+};
+
+type ConnectedGoogleResult = {
+  authorizationStarted: true;
+  status: "connected";
+  projectId: string;
+  scopeGranted: boolean;
+  tokenExpiresAt?: string;
+};
+
+export type ConnectGoogleResult = PendingConnectGoogleResult | ConnectedGoogleResult;
+
+export type StartGoogleOptions = {
+  waitForAuthorization?: boolean;
 };
 
 export type DesktopCredentialsProvider = {
@@ -159,9 +173,15 @@ type PendingSession = {
   verifier: string;
   timer: unknown;
   abortController: AbortController;
-  result: ConnectGoogleResult;
+  result: PendingConnectGoogleResult;
+  completion: Promise<SessionCompletion>;
+  settle: (completion: SessionCompletion) => void;
   settled: boolean;
 };
+
+type SessionCompletion =
+  | { type: "success"; result: ConnectedGoogleResult }
+  | { type: "failure"; code: ErrorCode };
 
 export class GoogleOAuthError extends Error {
   readonly code: ErrorCode;
@@ -280,7 +300,7 @@ export function createProductionGoogleOAuthDependencies(
 
 export class GoogleOAuthCoordinator {
   private pending: PendingSession | undefined;
-  private starting: Promise<ConnectGoogleResult> | undefined;
+  private starting: Promise<PendingSession> | undefined;
   private lastFailure: FailureState | undefined;
   private closed = false;
 
@@ -292,11 +312,14 @@ export class GoogleOAuthCoordinator {
     const session = this.pending;
 
     if (session) {
-      await this.disposeSession(session);
+      await this.finishFailure(session, "AUTH_CANCELLED", "failed");
     }
   }
 
-  async start(confirm: true): Promise<ConnectGoogleResult> {
+  async start(
+    confirm: true,
+    options: StartGoogleOptions = {}
+  ): Promise<ConnectGoogleResult> {
     if (this.closed) {
       throw new GoogleOAuthError("AUTH_CANCELLED");
     }
@@ -304,8 +327,18 @@ export class GoogleOAuthCoordinator {
       throw new GoogleOAuthError("AUTH_REQUIRED");
     }
 
+    const session = await this.getOrStartSession();
+
+    if (options.waitForAuthorization) {
+      return this.waitForSession(session);
+    }
+
+    return session.result;
+  }
+
+  private async getOrStartSession(): Promise<PendingSession> {
     if (this.pending) {
-      return this.pending.result;
+      return this.pending;
     }
 
     if (this.starting) {
@@ -415,7 +448,7 @@ export class GoogleOAuthCoordinator {
     };
   }
 
-  private async startSession(): Promise<ConnectGoogleResult> {
+  private async startSession(): Promise<PendingSession> {
     let credentials: DesktopCredentials | null;
 
     try {
@@ -472,12 +505,13 @@ export class GoogleOAuthCoordinator {
       const authorizationExpiresAt = new Date(
         this.dependencies.clock.now() + AUTHORIZATION_TIMEOUT_MS
       ).toISOString();
-      const result: ConnectGoogleResult = {
+      const result: PendingConnectGoogleResult = {
         authorizationStarted: true,
         status: "waiting_for_authorization",
         projectId: credentials.projectId,
         authorizationExpiresAt
       };
+      const { completion, settle } = createSessionCompletion();
       const timer = this.dependencies.timers.setTimeout(() => {
         if (session) {
           void this.expireSession(session);
@@ -492,6 +526,8 @@ export class GoogleOAuthCoordinator {
         timer,
         abortController: new AbortController(),
         result,
+        completion,
+        settle,
         settled: false
       };
       this.pending = session;
@@ -501,21 +537,20 @@ export class GoogleOAuthCoordinator {
         authorizationUrl(credentials, listener.redirectUri, state, pkce.challenge)
       );
 
-      if (this.closed || !this.isActiveSession(session)) {
-        throw new GoogleOAuthError("AUTH_CANCELLED");
-      }
-
-      return result;
+      return session;
     } catch (error) {
       const code = knownErrorCode(error) ?? "NETWORK_ERROR";
 
       if (session) {
-        await this.disposeSession(session);
-      } else if (listener) {
-        await closeQuietly(listener);
+        await this.finishFailure(session, code, "failed");
+      } else {
+        if (listener) {
+          await closeQuietly(listener);
+        }
+
+        this.recordFailure(code, "failed");
       }
 
-      this.recordFailure(code, "failed");
       throw new GoogleOAuthError(code);
     }
   }
@@ -578,7 +613,7 @@ export class GoogleOAuthCoordinator {
       }
 
       this.respond(callback, true);
-      await this.finishSuccess(session);
+      await this.finishSuccess(session, token);
     } catch (error) {
       if (!this.isActiveSession(session)) {
         return;
@@ -600,9 +635,15 @@ export class GoogleOAuthCoordinator {
     await this.finishFailure(session, "AUTH_TIMEOUT", "failed");
   }
 
-  private async finishSuccess(session: PendingSession): Promise<void> {
+  private async finishSuccess(session: PendingSession, token: StoredGoogleToken): Promise<void> {
+    if (session.settled) {
+      return;
+    }
+
     this.lastFailure = undefined;
+    const result = connectedResult(session.credentials, token);
     await this.disposeSession(session);
+    session.settle({ type: "success", result });
   }
 
   private async finishFailure(
@@ -610,8 +651,13 @@ export class GoogleOAuthCoordinator {
     code: ErrorCode,
     status: FailureState["status"]
   ): Promise<void> {
+    if (session.settled) {
+      return;
+    }
+
     this.recordFailure(code, status);
     await this.disposeSession(session);
+    session.settle({ type: "failure", code });
   }
 
   private async disposeSession(session: PendingSession): Promise<void> {
@@ -628,6 +674,16 @@ export class GoogleOAuthCoordinator {
     }
 
     await closeQuietly(session.listener);
+  }
+
+  private async waitForSession(session: PendingSession): Promise<ConnectedGoogleResult> {
+    const completion = await session.completion;
+
+    if (completion.type === "failure") {
+      throw new GoogleOAuthError(completion.code);
+    }
+
+    return completion.result;
   }
 
   private async refreshToken(
@@ -711,6 +767,33 @@ export class GoogleOAuthCoordinator {
       // Callback response failures cannot leave the listener or timeout active.
     }
   }
+}
+
+function createSessionCompletion(): {
+  completion: Promise<SessionCompletion>;
+  settle: (completion: SessionCompletion) => void;
+} {
+  let settle: (completion: SessionCompletion) => void = () => undefined;
+  const completion = new Promise<SessionCompletion>((resolve) => {
+    settle = resolve;
+  });
+
+  return { completion, settle };
+}
+
+function connectedResult(
+  credentials: DesktopCredentials,
+  token: StoredGoogleToken
+): ConnectedGoogleResult {
+  return {
+    authorizationStarted: true,
+    status: "connected",
+    projectId: credentials.projectId,
+    scopeGranted: hasReadOnlyScope(token.scope),
+    ...(token.expiryDate === undefined
+      ? {}
+      : { tokenExpiresAt: new Date(token.expiryDate).toISOString() })
+  };
 }
 
 async function createNodeLoopbackListener(
