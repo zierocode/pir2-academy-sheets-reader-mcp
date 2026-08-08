@@ -12,7 +12,7 @@ const inputSchema = z.object({
 export function createReadSheetSampleTool(): UnboundToolDefinition {
   return {
     name: "read_sheet_sample",
-    description: "Return a bounded sample for schema inspection.",
+    description: "อ่านตัวอย่างข้อมูลขนาดจำกัด เพื่อทำความเข้าใจ header และชนิดข้อมูลอย่างปลอดภัย",
     inputSchema,
     handler: async (input: unknown, context: ToolExecutionContext) => {
       const parsed = inputSchema.safeParse(input);

@@ -12,10 +12,10 @@ describe("public learner documentation", () => {
   it("gives a no-Terminal macOS and Windows installation path", () => {
     const readme = read("README.md");
 
-    expect(readme).toContain("## Install in Claude Desktop");
+    expect(readme).toContain("## ติดตั้งใน Claude Desktop");
     expect(readme).toMatch(/macOS/i);
     expect(readme).toMatch(/Windows/i);
-    expect(readme).toMatch(/You do not need (?:to use )?(?:the )?Terminal/i);
+    expect(readme).toContain("ผู้เรียนไม่ต้องใช้ Terminal");
     expect(readme).toContain("PiR2 Academy — Sheets Reader");
     expect(readme).toContain("google_auth_status");
     expect(readme).toContain("connect_google");
@@ -24,31 +24,31 @@ describe("public learner documentation", () => {
   it("requires a learner-owned Google project and documents the workshop auth lifecycle", () => {
     const setup = read("docs/setup-google-project.md");
 
-    expect(setup).toContain("# Set up your own Google project");
-    expect(setup).toMatch(/owned by you/i);
+    expect(setup).toContain("# ตั้งค่า Google project ของตัวเอง");
+    expect(setup).toContain("project ของตัวเอง");
     expect(setup).toContain("Google Sheets API");
     expect(setup).toContain("Desktop app");
     expect(setup).toContain("Testing");
     expect(setup).toMatch(/test user/i);
-    expect(setup).toMatch(/7 days/i);
+    expect(setup).toMatch(/7 วัน/i);
     expect(setup).toContain("https://www.googleapis.com/auth/spreadsheets.readonly");
-    expect(setup).toMatch(/company-managed|work or school/i);
-    expect(setup).toMatch(/administrator|admin/i);
-    expect(setup).toMatch(/does not use a shared PiR/i);
+    expect(setup).toMatch(/บัญชีบริษัท|โรงเรียน/i);
+    expect(setup).toMatch(/ผู้ดูแลระบบ|administrator|admin/i);
+    expect(setup).toMatch(/ไม่ใช้ OAuth application หรือ API key ส่วนกลางของ PiR/i);
   });
 
   it("states the actual privacy and authorization boundaries", () => {
     const privacy = read("docs/privacy.md");
 
-    expect(privacy).toContain("# Privacy and data boundaries");
+    expect(privacy).toContain("# Privacy และขอบเขตข้อมูล");
     expect(privacy).toMatch(/read-only/i);
-    expect(privacy).toMatch(/all Google Sheets/i);
-    expect(privacy).toMatch(/explicit.*URL|URL.*explicit/i);
+    expect(privacy).toMatch(/Sheets ทั้งหมด/i);
+    expect(privacy).toMatch(/Sheet URL หรือ spreadsheet ID ที่ระบุ/i);
     expect(privacy).toMatch(/Keychain/i);
     expect(privacy).toMatch(/Windows Credential Manager/i);
-    expect(privacy).toMatch(/returned to Claude/i);
-    expect(privacy).toMatch(/no PiR.*OAuth broker/i);
-    expect(privacy).toMatch(/revoke/i);
+    expect(privacy).toMatch(/ส่งกลับให้ Claude/i);
+    expect(privacy).toMatch(/ไม่มี PiR.*OAuth broker/i);
+    expect(privacy).toMatch(/revoke|ยกเลิกการเข้าถึง/i);
   });
 
   it("documents architecture, troubleshooting, and layered verification", () => {
@@ -59,8 +59,8 @@ describe("public learner documentation", () => {
     expect(architecture).toContain("# Architecture");
     expect(architecture).toContain("Refresh dashboard");
     expect(architecture).toMatch(/Dashboard Skill/i);
-    expect(troubleshooting).toContain("# Troubleshooting");
-    expect(troubleshooting).toMatch(/7-day|7 day/i);
+    expect(troubleshooting).toContain("# วิธีแก้ปัญหา");
+    expect(troubleshooting).toMatch(/7 วัน/i);
     expect(troubleshooting).toMatch(/redirect_uri_mismatch/);
     expect(troubleshooting).toMatch(/administrator|admin/i);
     expect(testing).toContain("# Testing and evidence");

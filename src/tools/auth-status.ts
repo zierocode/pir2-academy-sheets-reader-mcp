@@ -6,7 +6,7 @@ const inputSchema = z.object({}).strict();
 export function createAuthStatusTool(): UnboundToolDefinition {
   return {
     name: "google_auth_status",
-    description: "Verify configuration and token readiness without reading Sheet data.",
+    description: "ตรวจว่า Google OAuth พร้อมใช้งานหรือยัง โดยไม่อ่านข้อมูลใน Sheet",
     inputSchema,
     handler: async (input: unknown, context: ToolExecutionContext) => {
       if (!inputSchema.safeParse(input).success) {

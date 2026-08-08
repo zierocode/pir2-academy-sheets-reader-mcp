@@ -25,6 +25,8 @@ describe("MCPB manifest contract", () => {
       manifest_version: "0.4",
       name: "pir2-academy-sheets-reader",
       display_name: "PiR2 Academy — Sheets Reader",
+      description: "MCP สำหรับอ่าน Google Sheet แบบ read-only โดย PiR2 Academy",
+      long_description: "MCP แบบ local สำหรับคลาส Advanced Claude Cowork ใช้อ่าน Google Sheet แบบ read-only ผู้เรียนเชื่อม Google Cloud Desktop OAuth ของตัวเอง โดย token เก็บใน credential vault ของระบบปฏิบัติการ",
       author: { name: "PiR2 Academy" },
       repository: {
         type: "git",
@@ -53,8 +55,8 @@ describe("MCPB manifest contract", () => {
     expect(manifest.user_config).toMatchObject({
       google_oauth_credentials_file: {
         type: "file",
-        title: "Google Desktop OAuth credentials",
-        description: "Select the credentials JSON downloaded from your own Google Cloud project.",
+        title: "ไฟล์ Google Desktop OAuth",
+        description: "เลือกไฟล์ credentials JSON ที่ดาวน์โหลดจาก Google Cloud project ของคุณ",
         required: true,
         multiple: false
       }

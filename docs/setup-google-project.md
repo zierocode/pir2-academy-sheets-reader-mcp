@@ -1,59 +1,59 @@
-# Set up your own Google project
+# ตั้งค่า Google project ของตัวเอง
 
-Each learner uses a Google Cloud project owned by you and authorizes your own Google account. The course does not use a shared PiR OAuth application or shared API key.
+ผู้เรียนแต่ละคนใช้ Google Cloud project และ Google account ของตัวเอง คลาสนี้ไม่ใช้ OAuth application หรือ API key ส่วนกลางของ PiR
 
-This workshop path uses Google's **Testing** publishing status. Only the Google accounts you add as test users can connect. A Testing refresh token can expire after 7 days, so reconnect when Google asks. Verification and public production publishing are outside this course because the project is for the learner's personal use.
+Workshop ใช้ publishing status แบบ **Testing** จึงเชื่อมได้เฉพาะ Google account ที่เพิ่มเป็น test user และ refresh token อาจหมดอายุหลัง 7 วัน หาก Google ขอให้เชื่อมใหม่ให้ authorize อีกครั้ง การ verify และ publish แบบ public production อยู่นอกขอบเขตคลาส เพราะ project นี้ใช้ส่วนตัวโดยผู้เรียน
 
-## 1. Create a project
+## 1. สร้าง Project
 
-1. Open [Google Cloud Console](https://console.cloud.google.com/).
-2. Select the project menu, choose **New Project**, and use a recognizable name such as `my-sheets-reader`.
-3. Make sure this is your project, not the instructor's project.
+1. เปิด [Google Cloud Console](https://console.cloud.google.com/)
+2. เปิดเมนู project เลือก **New Project** และตั้งชื่อที่จำง่าย เช่น `my-sheets-reader`
+3. ตรวจว่าเป็น project ของคุณเอง ไม่ใช่ของผู้สอน
 
-## 2. Enable Google Sheets API
+## 2. เปิด Google Sheets API
 
-1. In the project, open **APIs & Services > Library**.
-2. Search for **Google Sheets API**.
-3. Open it and choose **Enable**.
+1. ไปที่ **APIs & Services > Library**
+2. ค้นหา **Google Sheets API**
+3. กด **Enable**
 
-Google Drive API is not required by this connector.
+MCP นี้ไม่ต้องใช้ Google Drive API
 
-## 3. Configure Google Auth Platform
+## 3. ตั้งค่า Google Auth Platform
 
-Google may label these pages **Google Auth Platform**, **OAuth consent screen**, or **Branding**, depending on the current Console layout.
+Google อาจใช้ชื่อหน้า **Google Auth Platform**, **OAuth consent screen** หรือ **Branding** ตาม Console layout ปัจจุบัน
 
-1. Open **Google Auth Platform**.
-2. Complete **Branding** with an app name such as `My Sheets Reader`, your support email, and your developer contact email.
-3. Under **Audience**, choose **External** and keep the publishing status as **Testing**.
-4. Add the Google account you will use in class as a **test user**.
-5. Under **Data Access**, add only this scope:
+1. เปิด **Google Auth Platform**
+2. ตั้ง **Branding** ด้วยชื่อ เช่น `My Sheets Reader`, support email และ developer contact email ของคุณ
+3. ที่ **Audience** เลือก **External** และคง publishing status เป็น **Testing**
+4. เพิ่ม Google account ที่จะใช้เรียนเป็น **test user**
+5. ที่ **Data Access** เพิ่ม scope นี้เพียงรายการเดียว:
 
    `https://www.googleapis.com/auth/spreadsheets.readonly`
 
-This sensitive, read-only scope can see all Google Sheets accessible to the authorized account; it cannot edit them. The MCP tools still require an explicit Sheet URL or spreadsheet ID before reading values.
+Scope นี้อ่าน Google Sheets ที่บัญชีมีสิทธิ์เข้าถึงได้ แต่แก้ไขไม่ได้ MCP จะอ่าน values เมื่อได้รับ Sheet URL หรือ spreadsheet ID ที่ระบุเท่านั้น
 
-## 4. Create Desktop credentials
+## 4. สร้าง Desktop Credentials
 
-1. Open **Google Auth Platform > Clients**.
-2. Choose **Create Client**.
-3. Select application type **Desktop app**.
-4. Name it `PiR2 Sheets Reader` and create it.
-5. Download the OAuth client JSON file to a private folder you can find during installation.
+1. เปิด **Google Auth Platform > Clients**
+2. เลือก **Create Client**
+3. เลือก application type เป็น **Desktop app**
+4. ตั้งชื่อ `PiR2 Sheets Reader` แล้วสร้าง
+5. ดาวน์โหลด OAuth client JSON ไปไว้ใน folder ส่วนตัวที่หาเจอตอนติดตั้ง
 
-Do not paste values from this file into Claude. Claude Desktop passes only the local file path to the local MCP process.
+ห้ามแปะค่าจากไฟล์นี้เข้า Claude ตัว Claude Desktop จะส่งเฉพาะ local file path ให้ MCP process ในเครื่อง
 
-## 5. Check before class
+## 5. Checklist ก่อนเรียน
 
-- You can sign in to the test-user Google account in your normal browser.
-- The practice Sheet is accessible to that same account.
-- The OAuth client is a **Desktop app**, not Web application.
-- The Google Sheets API is enabled in the same project as the OAuth client.
-- The downloaded JSON remains on your own Mac or Windows PC.
+- Sign in บัญชี Google ที่เป็น test user ใน Browser ได้
+- บัญชีเดียวกันเปิด Sheet ตัวอย่างได้
+- OAuth client เป็น **Desktop app** ไม่ใช่ Web application
+- เปิด Google Sheets API ใน project เดียวกับ OAuth client
+- JSON ที่ดาวน์โหลดยังอยู่ใน Mac หรือ Windows ของตัวเอง
 
-For a work or school company-managed account, an administrator can block any OAuth app. Ask your admin in advance or use a personal Google account with non-confidential sample data.
+บัญชีบริษัทหรือโรงเรียนอาจถูกผู้ดูแลระบบบล็อก OAuth app ให้ตรวจล่วงหน้าหรือใช้บัญชีส่วนตัวกับข้อมูลตัวอย่างที่ไม่เป็นความลับ
 
-## Why Testing is the workshop default
+## ทำไม Workshop ใช้ Testing
 
-Testing is the shortest learner-owned setup and does not require PiR to operate or verify a shared app. The tradeoff is the 7-day refresh-token lifetime and the need to list each account as a test user. Reconnecting is expected, not a data-loss event.
+Testing เป็นวิธี setup แบบ learner-owned ที่สั้นที่สุดและไม่ต้องให้ PiR operate/verify app ส่วนกลาง ข้อแลกเปลี่ยนคือ refresh token อาจมีอายุ 7 วันและต้องเพิ่มบัญชีเป็น test user การเชื่อมใหม่เป็นเรื่องปกติและไม่ทำให้ข้อมูลหาย
 
-Official references: [Create OAuth credentials](https://developers.google.com/workspace/guides/create-credentials), [Google Sheets scopes](https://developers.google.com/workspace/sheets/api/scopes), and [OAuth app state](https://developers.google.com/identity/protocols/oauth2/production-readiness/overview).
+เอกสารทางการ: [Create OAuth credentials](https://developers.google.com/workspace/guides/create-credentials), [Google Sheets scopes](https://developers.google.com/workspace/sheets/api/scopes), [OAuth app state](https://developers.google.com/identity/protocols/oauth2/production-readiness/overview)

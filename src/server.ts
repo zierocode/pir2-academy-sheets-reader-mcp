@@ -71,83 +71,83 @@ type SafeError = {
 
 const SAFE_ERRORS: Record<ErrorCode, SafeError> = {
   CREDENTIALS_NOT_CONFIGURED: {
-    message: "Google OAuth credentials are not configured.",
-    userAction: "Select a valid Google Desktop OAuth credentials file and try again.",
+    message: "ยังไม่ได้ตั้งค่าไฟล์ Google OAuth ครับ",
+    userAction: "เลือกไฟล์ Google Desktop OAuth credentials ที่ถูกต้อง แล้วลองอีกครั้งครับ",
     retryable: false
   },
   INVALID_CREDENTIAL_FILE: {
-    message: "The Google OAuth credential file is invalid.",
-    userAction: "Select a valid Desktop OAuth credentials JSON file from your own Google project.",
+    message: "ไฟล์ Google OAuth ที่เลือกไม่ถูกต้องครับ",
+    userAction: "เลือกไฟล์ Desktop OAuth credentials JSON จาก Google Cloud project ของคุณครับ",
     retryable: false
   },
   AUTH_REQUIRED: {
-    message: "Google authorization is required before reading Sheets.",
-    userAction: "Call connect_google with confirm set to true, then wait for authorization to finish.",
+    message: "ต้องเชื่อม Google ก่อนอ่าน Sheet ครับ",
+    userAction: "ยืนยันการเชื่อม Google แล้วทำขั้นตอนใน Browser ให้เสร็จครับ",
     retryable: false
   },
   AUTH_RECONNECT_REQUIRED: {
-    message: "Google authorization must be reconnected.",
-    userAction: "Call connect_google with confirm set to true, then authorize Google again.",
+    message: "การเชื่อม Google หมดอายุครับ",
+    userAction: "เชื่อม Google ใหม่ แล้วอนุญาตสิทธิ์อ่าน Sheet อีกครั้งครับ",
     retryable: false
   },
   AUTH_CANCELLED: {
-    message: "Google authorization was cancelled.",
-    userAction: "Call connect_google with confirm set to true when you are ready to authorize Google.",
+    message: "ยกเลิกการเชื่อม Google แล้วครับ",
+    userAction: "เมื่อพร้อม ให้เริ่มเชื่อม Google อีกครั้งครับ",
     retryable: false
   },
   AUTH_TIMEOUT: {
-    message: "Google authorization timed out.",
-    userAction: "Call connect_google with confirm set to true and complete authorization within three minutes.",
+    message: "หมดเวลารอเชื่อม Google ครับ",
+    userAction: "เริ่มเชื่อมใหม่และทำขั้นตอนใน Browser ให้เสร็จภายในสามนาทีครับ",
     retryable: true
   },
   TOKEN_STORE_UNAVAILABLE: {
-    message: "The operating system credential store is unavailable.",
-    userAction: "Unlock or enable the operating system credential store, then try again.",
+    message: "ยังใช้ที่เก็บข้อมูลเข้าสู่ระบบของเครื่องไม่ได้ครับ",
+    userAction: "ปลดล็อกที่เก็บรหัสผ่านของเครื่อง แล้วลองอีกครั้งครับ",
     retryable: false
   },
   INVALID_SPREADSHEET_REFERENCE: {
-    message: "The spreadsheet URL or ID is invalid.",
-    userAction: "Provide a Google Sheets URL or a spreadsheet ID.",
+    message: "Google Sheets URL หรือ spreadsheet ID ไม่ถูกต้องครับ",
+    userAction: "แปะ Google Sheets URL ที่ต้องการใช้อีกครั้งครับ",
     retryable: false
   },
   SPREADSHEET_NOT_FOUND_OR_FORBIDDEN: {
-    message: "The spreadsheet was not found or this Google account cannot access it.",
-    userAction: "Check the spreadsheet URL and sign in with an account that can view it.",
+    message: "ไม่พบ Sheet นี้ หรือบัญชี Google ที่เชื่อมอยู่ไม่มีสิทธิ์ดูครับ",
+    userAction: "ตรวจ URL และเชื่อมด้วยบัญชี Google ที่เปิด Sheet นี้ได้ครับ",
     retryable: false
   },
   SHEET_SELECTION_REQUIRED: {
-    message: "Select one visible sheet tab before reading a sample.",
-    userAction: "Call get_spreadsheet_metadata, then provide one sheetName.",
+    message: "มีหลาย Tab ที่อาจเป็นข้อมูลหลักครับ",
+    userAction: "เลือก Tab ที่ต้องการใช้หนึ่ง Tab ครับ",
     retryable: false
   },
   SHEET_NOT_FOUND: {
-    message: "The requested sheet tab was not found.",
-    userAction: "Call get_spreadsheet_metadata and choose an available tab name.",
+    message: "ไม่พบ Tab ที่เลือกใน Sheet นี้ครับ",
+    userAction: "เลือกชื่อ Tab ที่มีอยู่ใน Sheet ครับ",
     retryable: false
   },
   INVALID_RANGE: {
-    message: "The requested sheet bounds or A1 ranges are invalid.",
-    userAction: "Use one to ten valid A1 ranges within the documented limits.",
+    message: "ช่วงข้อมูลที่ขออ่านไม่ถูกต้องครับ",
+    userAction: "ตรวจชื่อ Tab และช่วงข้อมูล แล้วลองอีกครั้งครับ",
     retryable: false
   },
   RESPONSE_LIMIT_EXCEEDED: {
-    message: "The requested data exceeds the response limit.",
-    userAction: "Request fewer rows, columns, or smaller A1 ranges.",
+    message: "ข้อมูลที่ขออ่านมีขนาดใหญ่เกินขีดจำกัดครับ",
+    userAction: "แบ่งอ่านเป็นช่วงที่เล็กลง แล้วลองอีกครั้งครับ",
     retryable: false
   },
   RATE_LIMITED: {
-    message: "Google Sheets is temporarily rate limited.",
-    userAction: "Wait briefly and try the same read again.",
+    message: "Google Sheets จำกัดการอ่านชั่วคราวครับ",
+    userAction: "รอสักครู่ แล้วลองอ่านอีกครั้งครับ",
     retryable: true
   },
   NETWORK_ERROR: {
-    message: "Google Sheets could not be reached.",
-    userAction: "Check the network connection and try again.",
+    message: "ยังเชื่อมต่อ Google Sheets ไม่ได้ครับ",
+    userAction: "ตรวจอินเทอร์เน็ต แล้วลองอีกครั้งครับ",
     retryable: true
   },
   GOOGLE_API_ERROR: {
-    message: "Google Sheets returned an unexpected error.",
-    userAction: "Try the request again. If it persists, reconnect Google.",
+    message: "Google Sheets ตอบกลับผิดปกติครับ",
+    userAction: "ลองอีกครั้ง หากยังไม่สำเร็จให้เชื่อม Google ใหม่ครับ",
     retryable: false
   }
 };
