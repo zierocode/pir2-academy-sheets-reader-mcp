@@ -4,8 +4,8 @@
   "name": "pir2-academy-sheets-reader",
   "display_name": "PiR2 Academy — Sheets Reader",
   "version": "0.1.0",
-  "description": "Read Google Sheets through learner-owned OAuth for PiR2 Academy dashboards.",
-  "long_description": "A local, read-only Google Sheets MCP server for the Advanced Claude CoWork course. Each learner connects a Google Cloud Desktop OAuth client that they own. Tokens stay in the operating system credential vault.",
+  "description": "MCP สำหรับอ่าน Google Sheet แบบ read-only โดย PiR2 Academy",
+  "long_description": "MCP แบบ local สำหรับคลาส Advanced Claude Cowork ใช้อ่าน Google Sheet แบบ read-only ผู้เรียนเชื่อม Google Cloud Desktop OAuth ของตัวเอง โดย token เก็บใน credential vault ของระบบปฏิบัติการ",
   "author": {
     "name": "PiR2 Academy"
   },
@@ -49,8 +49,8 @@
   "user_config": {
     "google_oauth_credentials_file": {
       "type": "file",
-      "title": "Google Desktop OAuth credentials",
-      "description": "Select the credentials JSON downloaded from your own Google Cloud project.",
+      "title": "ไฟล์ Google Desktop OAuth",
+      "description": "เลือกไฟล์ credentials JSON ที่ดาวน์โหลดจาก Google Cloud project ของคุณ",
       "required": true,
       "multiple": false
     }
@@ -58,23 +58,23 @@
   "tools": [
     {
       "name": "google_auth_status",
-      "description": "Check whether Google Sheets OAuth is connected."
+      "description": "ตรวจว่า Google OAuth พร้อมใช้งานหรือยัง โดยไม่อ่านข้อมูลใน Sheet"
     },
     {
       "name": "connect_google",
-      "description": "Connect the learner's Google account with read-only Sheets access."
+      "description": "เริ่มเชื่อม Google OAuth หลังผู้เรียนยืนยัน โดยขอสิทธิ์อ่าน Google Sheet เท่านั้น"
     },
     {
       "name": "get_spreadsheet_metadata",
-      "description": "Read spreadsheet title and sheet metadata without cell values."
+      "description": "ตรวจชื่อไฟล์และรายการ Tab จาก Google Sheets URL หรือ spreadsheet ID"
     },
     {
       "name": "read_sheet_sample",
-      "description": "Read a bounded sample so Claude can understand a sheet safely."
+      "description": "อ่านตัวอย่างข้อมูลขนาดจำกัด เพื่อทำความเข้าใจ header และชนิดข้อมูลอย่างปลอดภัย"
     },
     {
       "name": "read_sheet_ranges",
-      "description": "Read one or more bounded A1 ranges from a spreadsheet."
+      "description": "อ่านช่วงข้อมูล A1 ที่ระบุแบบ read-only ภายในขนาดที่ปลอดภัย"
     }
   ]
 }

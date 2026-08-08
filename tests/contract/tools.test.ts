@@ -205,23 +205,23 @@ describe("MCP tool contract", () => {
     expect(catalog(harness).map(({ name, description }) => ({ name, description }))).toEqual([
       {
         name: "google_auth_status",
-        description: "Verify configuration and token readiness without reading Sheet data."
+        description: "ตรวจว่า Google OAuth พร้อมใช้งานหรือยัง โดยไม่อ่านข้อมูลใน Sheet"
       },
       {
         name: "connect_google",
-        description: "Start the explicit learner-approved OAuth flow."
+        description: "เริ่มเชื่อม Google OAuth หลังผู้เรียนยืนยัน โดยขอสิทธิ์อ่าน Google Sheet เท่านั้น"
       },
       {
         name: "get_spreadsheet_metadata",
-        description: "Resolve a spreadsheet URL or ID and list its tabs."
+        description: "ตรวจชื่อไฟล์และรายการ Tab จาก Google Sheets URL หรือ spreadsheet ID"
       },
       {
         name: "read_sheet_sample",
-        description: "Return a bounded sample for schema inspection."
+        description: "อ่านตัวอย่างข้อมูลขนาดจำกัด เพื่อทำความเข้าใจ header และชนิดข้อมูลอย่างปลอดภัย"
       },
       {
         name: "read_sheet_ranges",
-        description: "Read explicit bounded A1 ranges after inspection."
+        description: "อ่านช่วงข้อมูล A1 ที่ระบุแบบ read-only ภายในขนาดที่ปลอดภัย"
       }
     ]);
   });

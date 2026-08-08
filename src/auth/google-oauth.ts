@@ -1415,34 +1415,34 @@ async function closeQuietly(listener: LoopbackListener): Promise<void> {
 }
 
 function successCallbackHtml(): string {
-  return "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>Google connected</title></head><body><p>Google authorization is complete. You can close this window and return to Claude.</p></body></html>";
+  return "<!doctype html><html lang=\"th\"><head><meta charset=\"utf-8\"><title>เชื่อม Google สำเร็จ</title></head><body><p>เชื่อม Google เรียบร้อยแล้ว ปิดหน้าต่างนี้และกลับไปที่ Claude ได้ครับ</p></body></html>";
 }
 
 function failureCallbackHtml(): string {
-  return "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>Google authorization failed</title></head><body><p>Google authorization could not be completed. Return to Claude and try again.</p></body></html>";
+  return "<!doctype html><html lang=\"th\"><head><meta charset=\"utf-8\"><title>เชื่อม Google ไม่สำเร็จ</title></head><body><p>ยังเชื่อม Google ไม่สำเร็จ กลับไปที่ Claude แล้วลองอีกครั้งครับ</p></body></html>";
 }
 
 function messageForCode(code: ErrorCode): string {
   switch (code) {
     case "CREDENTIALS_NOT_CONFIGURED":
-      return "Google OAuth credentials are not configured.";
+      return "ยังไม่ได้ตั้งค่า Google OAuth credentials ครับ";
     case "INVALID_CREDENTIAL_FILE":
-      return "Google OAuth credentials are invalid.";
+      return "Google OAuth credentials ไม่ถูกต้องครับ";
     case "AUTH_REQUIRED":
-      return "Google authorization must be started again.";
+      return "ต้องเริ่มเชื่อม Google ใหม่ครับ";
     case "AUTH_RECONNECT_REQUIRED":
-      return "Google authorization must be reconnected.";
+      return "ต้องเชื่อม Google ใหม่ครับ";
     case "AUTH_CANCELLED":
-      return "Google authorization was cancelled.";
+      return "ยกเลิกการเชื่อม Google แล้วครับ";
     case "AUTH_TIMEOUT":
-      return "Google authorization timed out.";
+      return "หมดเวลารอเชื่อม Google ครับ";
     case "TOKEN_STORE_UNAVAILABLE":
-      return "The OS token store is unavailable.";
+      return "ยังใช้ที่เก็บ token ของเครื่องไม่ได้ครับ";
     case "NETWORK_ERROR":
-      return "Google authorization could not start. Check the browser and try again.";
+      return "ยังเริ่มเชื่อม Google ไม่ได้ ตรวจ Browser แล้วลองอีกครั้งครับ";
     case "GOOGLE_API_ERROR":
-      return "Google authorization could not be completed. Try connecting again.";
+      return "ยังเชื่อม Google ไม่สำเร็จ ลองเชื่อมอีกครั้งครับ";
     default:
-      return "Google authorization failed. Try connecting again.";
+      return "เชื่อม Google ไม่สำเร็จ ลองเชื่อมอีกครั้งครับ";
   }
 }

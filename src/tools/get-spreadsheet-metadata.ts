@@ -8,7 +8,7 @@ const inputSchema = z.object({
 export function createGetSpreadsheetMetadataTool(): UnboundToolDefinition {
   return {
     name: "get_spreadsheet_metadata",
-    description: "Resolve a spreadsheet URL or ID and list its tabs.",
+    description: "ตรวจชื่อไฟล์และรายการ Tab จาก Google Sheets URL หรือ spreadsheet ID",
     inputSchema,
     handler: async (input: unknown, context: ToolExecutionContext) => {
       const parsed = inputSchema.safeParse(input);

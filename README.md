@@ -1,48 +1,48 @@
-Built for PiR2 Academy — Advanced Claude Cowork
+สร้างสำหรับ PiR2 Academy — Advanced Claude Cowork
 
 # PiR2 Academy Sheets Reader MCP
 
-A local, read-only connector that lets Claude Desktop read bounded data from Google Sheets through a Google project and Google account owned by the learner.
+MCP แบบ local และ read-only ที่ให้ Claude Desktop อ่านข้อมูลจาก Google Sheets ภายในขนาดที่ปลอดภัย ผ่าน Google project และ Google account ของผู้เรียนเอง
 
-## What it does
+## ทำอะไรได้บ้าง
 
-The bundle exposes five stable tools:
+Bundle มี tools 5 ตัว:
 
-- `google_auth_status` — check whether Google is connected.
-- `connect_google` — open Google's consent page for read-only access.
-- `get_spreadsheet_metadata` — read workbook and tab metadata.
-- `read_sheet_sample` — inspect a small, bounded sample.
-- `read_sheet_ranges` — read explicit, bounded A1 ranges.
+- `google_auth_status` — ตรวจว่าเชื่อม Google พร้อมหรือยัง
+- `connect_google` — เปิดหน้าขอสิทธิ์อ่าน Google Sheet
+- `get_spreadsheet_metadata` — อ่านชื่อไฟล์และข้อมูล Tab โดยไม่อ่าน cell values
+- `read_sheet_sample` — อ่านตัวอย่างขนาดเล็กเพื่อดูโครงสร้างอย่างปลอดภัย
+- `read_sheet_ranges` — อ่าน A1 ranges ที่ระบุภายในขนาดที่ปลอดภัย
 
-It cannot edit, create, or delete a spreadsheet. It does not use a PiR shared Google app, service account, remote MCP server, or OAuth broker.
+MCP นี้แก้ สร้าง หรือลบ Spreadsheet ไม่ได้ และไม่ใช้ Google app, API key, remote MCP server หรือ OAuth broker ส่วนกลางของ PiR
 
-## Before class
+## เตรียมก่อนเรียน
 
-1. Install the current Claude Desktop release on macOS or Windows.
-2. Follow [Set up your own Google project](docs/setup-google-project.md) and download its Desktop OAuth JSON file.
-3. Download the `.mcpb` and matching `.sha256` files from this repository's Releases page.
+1. ติดตั้ง Claude Desktop เวอร์ชันปัจจุบันบน macOS หรือ Windows
+2. ทำตาม [ตั้งค่า Google project ของตัวเอง](docs/setup-google-project.md) และดาวน์โหลด Desktop OAuth JSON
+3. ดาวน์โหลดไฟล์ `.mcpb` และ `.sha256` คู่กันจาก Releases ของ repository นี้
 
-Company-managed Google accounts can block third-party OAuth apps. If your administrator does not allow the connection, prepare a personal Google account and a Sheet containing non-confidential practice data.
+บัญชี Google ของบริษัทอาจบล็อก third-party OAuth app หากผู้ดูแลระบบไม่อนุญาต ให้เตรียมบัญชี Google ส่วนตัวและ Sheet ตัวอย่างที่ไม่มีข้อมูลลับ
 
-## Install in Claude Desktop
+## ติดตั้งใน Claude Desktop
 
-1. Open the downloaded `.mcpb` file.
-2. Confirm **PiR2 Academy — Sheets Reader** in Claude Desktop.
-3. When asked for **Google Desktop OAuth credentials**, choose the JSON file from your own Google project.
-4. Start a new Claude conversation and ask: `Check Google Sheets connection`.
-5. When Claude reports that Google is not connected, ask: `Connect Google` and complete Google's consent page in your browser.
+1. เปิดไฟล์ `.mcpb` ที่ดาวน์โหลด
+2. ตรวจชื่อ **PiR2 Academy — Sheets Reader** แล้วติดตั้ง
+3. ตรง **ไฟล์ Google Desktop OAuth** เลือก JSON จาก Google project ของตัวเอง
+4. เปิด task ใหม่ใน Claude แล้วพิมพ์ `ตรวจการเชื่อมต่อ Google Sheet`
+5. หากยังไม่ connected ให้พิมพ์ `เชื่อม Google` และทำขั้นตอนใน Browser ให้เสร็จ
 
-The learner flow is the same on macOS and Windows. You do not need to use the Terminal. Keep the downloaded OAuth JSON private and do not upload it to chat, GitHub, Slack, or a shared drive.
+ขั้นตอนเหมือนกันบน macOS และ Windows ผู้เรียนไม่ต้องใช้ Terminal เก็บ OAuth JSON เป็นความลับ และห้าม upload เข้า Chat, GitHub, Slack หรือ shared drive
 
-## Use it
+## ใช้งาน
 
-Give Claude a Google Sheet URL and ask it to inspect the workbook or read a specific range. The Live Dashboard lab adds a separate Dashboard Skill that interprets generic Sheet data and responds to the manual command `Refresh dashboard`.
+แปะ Google Sheet URL ให้ Claude ได้เลย ใน Live Dashboard lab ตัว Skill จะเลือก Tab, KPI และกราฟให้เอง และรองรับคำสั่ง manual `Refresh dashboard`
 
-Read [Privacy and data boundaries](docs/privacy.md) before using real business data. See [Troubleshooting](docs/troubleshooting.md) if connection or access fails.
+อ่าน [Privacy และขอบเขตข้อมูล](docs/privacy.md) ก่อนใช้ข้อมูลธุรกิจจริง หากเชื่อมต่อไม่ได้ให้ดู [วิธีแก้ปัญหา](docs/troubleshooting.md)
 
-## For maintainers
+## สำหรับ Maintainer
 
-Architecture and verification are documented in [Architecture](docs/architecture.md) and [Testing and evidence](docs/TESTING.md).
+Architecture และ verification อยู่ใน [Architecture](docs/architecture.md) และ [Testing and evidence](docs/TESTING.md)
 
 ```sh
 npm ci
@@ -56,7 +56,7 @@ npm run bundle
 npm run bundle:verify
 ```
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a change. Report vulnerabilities through [SECURITY.md](SECURITY.md).
+อ่าน [CONTRIBUTING.md](CONTRIBUTING.md) ก่อนเปิด change และแจ้งช่องโหว่ผ่าน [SECURITY.md](SECURITY.md)
 
 ## License
 

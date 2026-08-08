@@ -8,7 +8,7 @@ const inputSchema = z.object({
 export function createConnectGoogleTool(): UnboundToolDefinition {
   return {
     name: "connect_google",
-    description: "Start the explicit learner-approved OAuth flow.",
+    description: "เริ่มเชื่อม Google OAuth หลังผู้เรียนยืนยัน โดยขอสิทธิ์อ่าน Google Sheet เท่านั้น",
     inputSchema,
     handler: async (input: unknown, context: ToolExecutionContext) => {
       const parsed = inputSchema.safeParse(input);

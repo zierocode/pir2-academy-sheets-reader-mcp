@@ -282,7 +282,7 @@ function getLoopbackResponse(url: string): Promise<{ statusCode: number; body: s
 
       const [statusLine, body = ""] = response.split("\r\n\r\n", 2);
 
-      if (!statusLine || !body.includes("return to Claude")) {
+      if (!statusLine || !body.includes("กลับไปที่ Claude")) {
         return;
       }
 
@@ -439,7 +439,7 @@ describe("GoogleOAuthCoordinator", () => {
     expect(authorizationUrl.searchParams.get("code_challenge")).toBe(
       createHash("sha256").update(exchange.verifier).digest("base64url")
     );
-    expect(callbackHtml).toContain("return to Claude");
+    expect(callbackHtml).toContain("กลับไปที่ Claude");
     expectNoSensitiveData(callbackHtml, [AUTHORIZATION_CODE, state, CLIENT_SECRET, ACCESS_TOKEN]);
     expect(harness.listenerCloseCount()).toBe(1);
     expect(harness.activeTimerCount()).toBe(0);
@@ -480,7 +480,7 @@ describe("GoogleOAuthCoordinator", () => {
       const callbackResponse = await getLoopbackResponse(callbackUrl.toString());
 
       expect(callbackResponse.statusCode).toBe(200);
-      expect(callbackResponse.body).toContain("return to Claude");
+      expect(callbackResponse.body).toContain("กลับไปที่ Claude");
       expectNoSensitiveData(callbackResponse.body, [AUTHORIZATION_CODE, state, CLIENT_SECRET]);
       await expect(settleWithin(connected, 1_000)).resolves.toMatchObject({
         authorizationStarted: true,
@@ -533,7 +533,7 @@ describe("GoogleOAuthCoordinator", () => {
       expect(closeSettled).toBe(false);
       releaseListenerClose?.();
       await expect(closing).resolves.toBeUndefined();
-      await expect(callback).resolves.toContain("return to Claude");
+      await expect(callback).resolves.toContain("กลับไปที่ Claude");
     } finally {
       releaseListenerClose?.();
       await callback;
@@ -617,7 +617,7 @@ describe("GoogleOAuthCoordinator", () => {
         status: "connected",
         projectId: PROJECT_ID
       });
-      expect(callbackHtml).toContain("return to Claude");
+      expect(callbackHtml).toContain("กลับไปที่ Claude");
       expect(harness.listenerCloseCount()).toBe(2);
       expect(harness.activeTimerCount()).toBe(0);
     } finally {
@@ -663,7 +663,7 @@ describe("GoogleOAuthCoordinator", () => {
         status: "connected",
         projectId: PROJECT_ID
       });
-      expect(callbackHtml).toContain("return to Claude");
+      expect(callbackHtml).toContain("กลับไปที่ Claude");
       expect(harness.listenerCloseCount()).toBe(1);
       expect(harness.activeTimerCount()).toBe(0);
     } finally {
@@ -711,7 +711,7 @@ describe("GoogleOAuthCoordinator", () => {
         status: "connected",
         projectId: PROJECT_ID
       });
-      expect(callbackHtml).toContain("return to Claude");
+      expect(callbackHtml).toContain("กลับไปที่ Claude");
       expect(harness.listenerCloseCount()).toBe(1);
       expect(harness.activeTimerCount()).toBe(0);
     } finally {

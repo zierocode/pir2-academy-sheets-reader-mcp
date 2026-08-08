@@ -10,7 +10,7 @@ const inputSchema = z.object({
 export function createReadSheetRangesTool(): UnboundToolDefinition {
   return {
     name: "read_sheet_ranges",
-    description: "Read explicit bounded A1 ranges after inspection.",
+    description: "อ่านช่วงข้อมูล A1 ที่ระบุแบบ read-only ภายในขนาดที่ปลอดภัย",
     inputSchema,
     handler: async (input: unknown, context: ToolExecutionContext) => {
       const parsed = inputSchema.safeParse(input);

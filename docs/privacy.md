@@ -1,26 +1,26 @@
-# Privacy and data boundaries
+# Privacy และขอบเขตข้อมูล
 
-## What stays local
+## สิ่งที่อยู่ในเครื่อง
 
-- The MCP server runs as a local Claude Desktop process on the learner's computer.
-- The OAuth client JSON stays at the local path selected during installation.
-- Refresh tokens are stored in macOS Keychain or Windows Credential Manager under the service `pir2-academy-sheets-reader-mcp`.
-- There is no PiR remote MCP server and no PiR-hosted OAuth broker.
+- MCP server ทำงานเป็น local process ของ Claude Desktop บนเครื่องผู้เรียน
+- OAuth client JSON อยู่ที่ local path ที่เลือกตอนติดตั้ง
+- Refresh token เก็บใน macOS Keychain หรือ Windows Credential Manager ภายใต้ service `pir2-academy-sheets-reader-mcp`
+- ไม่มี PiR remote MCP server หรือ PiR-hosted OAuth broker
 
-## Google permission
+## สิทธิ์จาก Google
 
-The connector requests only the read-only scope `https://www.googleapis.com/auth/spreadsheets.readonly`. It has no write tool and cannot change Sheet values, formatting, sharing, or ownership.
+MCP ขอเฉพาะ read-only scope `https://www.googleapis.com/auth/spreadsheets.readonly` ไม่มี write tool จึงเปลี่ยน values, formatting, sharing หรือ ownership ไม่ได้
 
-Google defines this scope as permission to see all Google Sheets accessible to the authorized account; OAuth cannot narrow it to one Sheet. To reduce accidental exposure, the MCP does not list Drive files and reads values only after an explicit Sheet URL or spreadsheet ID is supplied. Read requests also enforce range, cell, row, column, byte, and response limits.
+Google ให้อ่าน Sheets ทั้งหมดที่บัญชีนั้นเข้าถึงได้และ OAuth จำกัดเหลือ Sheet เดียวไม่ได้ เพื่อลดความเสี่ยง MCP จะไม่ list ไฟล์ใน Drive และอ่าน values เมื่อได้รับ Sheet URL หรือ spreadsheet ID ที่ระบุเท่านั้น ทุกคำขอยังมี limit ด้าน range, cell, row, column, byte และ response
 
-## What leaves the computer
+## สิ่งที่ออกจากเครื่อง
 
-OAuth and Sheets API requests go directly from the local MCP to Google. Sheet values selected by a tool call are returned to Claude as conversation tool results, so Claude and the applicable Anthropic service terms are part of the data boundary. Do not use confidential, regulated, or client data unless your organization has approved that use.
+OAuth และ Sheets API requests วิ่งจาก local MCP ไป Google โดยตรง Values ที่ tool อ่านจะถูกส่งกลับให้ Claude เป็น conversation tool result จึงอยู่ภายใต้เงื่อนไขบริการ Anthropic ที่เกี่ยวข้อง ห้ามใช้ข้อมูลลับ ข้อมูลกำกับดูแล หรือข้อมูลลูกค้า หากองค์กรยังไม่อนุมัติ
 
-The MCP does not intentionally log credentials, OAuth tokens, Sheet titles, or Sheet values. CI and release bundles contain no learner credential file.
+MCP ไม่ตั้งใจ log credentials, OAuth tokens, ชื่อ Sheet หรือ values และ CI/release bundles ไม่มี credential file ของผู้เรียน
 
-## Revoke access
+## ยกเลิกการเข้าถึง
 
-You remain in control of the Google project and account. To revoke the connection, open your Google Account's third-party connections page, select your Sheets Reader app, and remove access. Google then rejects the stored token. You can also delete the matching local credential entry from Keychain Access or Windows Credential Manager.
+ไปที่ third-party connections ของ Google Account เลือก Sheets Reader app แล้ว remove access จากนั้น Google จะปฏิเสธ token เดิม หรือจะลบ local credential ที่ตรงกันใน Keychain Access/Windows Credential Manager ก็ได้
 
-Removing the Claude Desktop extension stops the MCP from running but does not itself revoke Google's authorization.
+การถอน extension จาก Claude Desktop จะหยุด MCP แต่ไม่ได้ revoke สิทธิ์ที่ Google โดยอัตโนมัติ
