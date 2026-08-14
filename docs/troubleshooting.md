@@ -12,7 +12,7 @@
 | เปิด Sheet ไม่ได้ | Google account ที่เชื่อมไม่มีสิทธิ์ | เปิด Sheet ด้วยบัญชีเดียวกันและขอ access จากเจ้าของ ห้ามแก้ด้วยการเปิด Sheet เป็น public |
 | ไม่พบ Spreadsheet | URL/ID ผิด หรืออยู่คนละบัญชี | Copy URL เต็มจาก Sheet ที่เปิดอยู่แล้วลองใหม่ |
 | Range ถูกปฏิเสธหรือข้อมูลไม่ครบ | คำขอเกิน safety limits | ใช้ช่วง A1 ที่เล็กลงหรือให้ Skill เตรียม summary range |
-| Claude หา tools ไม่เจอ | Extension disabled, ติดตั้งไม่ครบ หรือ Claude Desktop ต้อง restart | เปิด extension settings, enable **PiR2 Academy — Sheets Reader** แล้ว restart Claude Desktop |
+| Claude หา tools ไม่เจอ | Extension disabled, ติดตั้งไม่ครบ หรือ Claude Desktop ต้อง restart | เปิด extension settings, enable **PiR2 Academy Sheets Reader** แล้ว restart Claude Desktop |
 
 ## Safe reset
 

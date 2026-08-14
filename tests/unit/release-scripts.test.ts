@@ -14,13 +14,13 @@ function run(script: string, args: string[] = []) {
 
 describe("release scripts", () => {
   it("accepts only the package-version tag", () => {
-    const accepted = run("scripts/release-guard.mjs", ["v0.1.0"]);
+    const accepted = run("scripts/release-guard.mjs", ["v0.1.1"]);
     const rejected = run("scripts/release-guard.mjs", ["v9.9.9"]);
 
     expect(accepted.status, accepted.stderr).toBe(0);
     expect(accepted.stdout).toContain("release guard passed");
     expect(rejected.status).not.toBe(0);
-    expect(rejected.stderr).toContain("does not match v0.1.0");
+    expect(rejected.stderr).toContain("does not match v0.1.1");
   });
 
   it("finds no credential material in tracked source", () => {

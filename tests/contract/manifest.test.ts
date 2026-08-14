@@ -18,13 +18,22 @@ function readManifest(): Record<string, unknown> {
 }
 
 describe("MCPB manifest contract", () => {
+  it("uses a Live Artifact-safe display name", () => {
+    const manifest = readManifest();
+    const displayName = manifest.display_name;
+
+    expect(displayName).toBeTypeOf("string");
+    expect(displayName).toMatch(/^[A-Za-z0-9]+(?: [A-Za-z0-9]+)*$/);
+    expect(String(displayName).replace(/[^A-Za-z0-9]/g, "_")).not.toContain("__");
+  });
+
   it("declares the stable PiR2 identity and Node 0.4 server", () => {
     const manifest = readManifest();
 
     expect(manifest).toMatchObject({
       manifest_version: "0.4",
       name: "pir2-academy-sheets-reader",
-      display_name: "PiR2 Academy — Sheets Reader",
+      display_name: "PiR2 Academy Sheets Reader",
       description: "MCP สำหรับอ่าน Google Sheet แบบ read-only โดย PiR2 Academy",
       long_description: "MCP แบบ local สำหรับคลาส Advanced Claude Cowork ใช้อ่าน Google Sheet แบบ read-only ผู้เรียนเชื่อม Google Cloud Desktop OAuth ของตัวเอง โดย token เก็บใน credential vault ของระบบปฏิบัติการ",
       author: { name: "PiR2 Academy" },

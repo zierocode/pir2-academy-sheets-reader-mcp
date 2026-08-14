@@ -16,7 +16,7 @@ describe("public learner documentation", () => {
     expect(readme).toMatch(/macOS/i);
     expect(readme).toMatch(/Windows/i);
     expect(readme).toContain("ผู้เรียนไม่ต้องใช้ Terminal");
-    expect(readme).toContain("PiR2 Academy — Sheets Reader");
+    expect(readme).toContain("PiR2 Academy Sheets Reader");
     expect(readme).toContain("google_auth_status");
     expect(readme).toContain("connect_google");
   });
