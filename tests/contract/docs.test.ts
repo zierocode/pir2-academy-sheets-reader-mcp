@@ -16,7 +16,7 @@ describe("public learner documentation", () => {
     expect(readme).toMatch(/macOS/i);
     expect(readme).toMatch(/Windows/i);
     expect(readme).toContain("ผู้เรียนไม่ต้องใช้ Terminal");
-    expect(readme).toContain("PiR2 Academy Sheets Reader");
+    expect(readme).toContain("PiR2-Sheets-Reader");
     expect(readme).toContain("google_auth_status");
     expect(readme).toContain("connect_google");
   });
@@ -57,7 +57,8 @@ describe("public learner documentation", () => {
     const testing = read("docs/TESTING.md");
 
     expect(architecture).toContain("# Architecture");
-    expect(architecture).toContain("Refresh dashboard");
+    expect(architecture).toContain("Reload");
+    expect(architecture).not.toContain("Refresh dashboard");
     expect(architecture).toMatch(/Dashboard Skill/i);
     expect(troubleshooting).toContain("# วิธีแก้ปัญหา");
     expect(troubleshooting).toMatch(/7 วัน/i);

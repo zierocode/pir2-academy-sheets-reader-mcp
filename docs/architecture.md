@@ -16,10 +16,10 @@ flowchart LR
 ## Responsibility split
 
 - **MCPB:** learner-owned OAuth, spreadsheet reference parsing, read-only API calls, bounded stable results, and safe errors.
-- **Dashboard Skill:** inspect a sample, infer suitable KPIs and charts, explain data-quality issues, render the dashboard, and handle `Refresh dashboard`.
-- **Live artifact:** a snapshot in the Claude conversation. Refresh is manual, not a background real-time subscription.
+- **Dashboard Skill:** inspect a sample, infer suitable KPIs and charts, explain data-quality issues, and render the dashboard with the approved local tools.
+- **Live artifact:** a snapshot in the Claude conversation. Refresh is manual through the native **Reload** control, not a background real-time subscription.
 
-The manual refresh sequence is: the learner types `Refresh dashboard`, the skill calls the same bounded MCP tools again, and the artifact is rebuilt from the latest Sheet values.
+The manual refresh sequence is: the learner presses **Reload** in the Live Artifact header, the page loads again, and the same bounded MCP tools read the latest Sheet values. The dashboard keeps the last successful view if a read or schema check fails.
 
 ## Trust boundaries
 
