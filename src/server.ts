@@ -191,7 +191,7 @@ export type ToolCatalogOptions = {
 export function buildServerIdentity(): { name: string; version: string } {
   return {
     name: "pir2-academy-sheets-reader",
-    version: "0.1.0"
+    version: "0.1.1"
   };
 }
 

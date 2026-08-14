@@ -27,7 +27,7 @@ MCP นี้แก้ สร้าง หรือลบ Spreadsheet ไม่�
 ## ติดตั้งใน Claude Desktop
 
 1. เปิดไฟล์ `.mcpb` ที่ดาวน์โหลด
-2. ตรวจชื่อ **PiR2 Academy — Sheets Reader** แล้วติดตั้ง
+2. ตรวจชื่อ **PiR2 Academy Sheets Reader** แล้วติดตั้ง
 3. ตรง **ไฟล์ Google Desktop OAuth** เลือก JSON จาก Google project ของตัวเอง
 4. เปิด task ใหม่ใน Claude แล้วพิมพ์ `ตรวจการเชื่อมต่อ Google Sheet`
 5. หากยังไม่ connected ให้พิมพ์ `เชื่อม Google` และทำขั้นตอนใน Browser ให้เสร็จ

@@ -5,7 +5,7 @@ describe("server identity", () => {
   it("uses the stable PiR2 Academy Sheets Reader identity", () => {
     expect(buildServerIdentity()).toEqual({
       name: "pir2-academy-sheets-reader",
-      version: "0.1.0"
+      version: "0.1.1"
     });
   });
 });
