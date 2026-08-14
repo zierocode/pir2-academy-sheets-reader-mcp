@@ -27,7 +27,7 @@ MCP นี้แก้ สร้าง หรือลบ Spreadsheet ไม่�
 ## ติดตั้งใน Claude Desktop
 
 1. เปิดไฟล์ `.mcpb` ที่ดาวน์โหลด
-2. ตรวจชื่อ **PiR2 Academy Sheets Reader** แล้วติดตั้ง
+2. ตรวจชื่อ **PiR2-Sheets-Reader** แล้วติดตั้ง
 3. ตรง **ไฟล์ Google Desktop OAuth** เลือก JSON จาก Google project ของตัวเอง
 4. เปิด task ใหม่ใน Claude แล้วพิมพ์ `ตรวจการเชื่อมต่อ Google Sheet`
 5. หากยังไม่ connected ให้พิมพ์ `เชื่อม Google` และทำขั้นตอนใน Browser ให้เสร็จ
@@ -36,7 +36,7 @@ MCP นี้แก้ สร้าง หรือลบ Spreadsheet ไม่�
 
 ## ใช้งาน
 
-แปะ Google Sheet URL ให้ Claude ได้เลย ใน Live Dashboard lab ตัว Skill จะเลือก Tab, KPI และกราฟให้เอง และรองรับคำสั่ง manual `Refresh dashboard`
+แปะ Google Sheet URL ให้ Claude ได้เลย ใน Live Dashboard lab ตัว Skill จะเลือก Tab, KPI และกราฟให้เอง เมื่อข้อมูลใน Sheet เปลี่ยน ให้กด **Reload** บนแถบด้านบนของ Live Artifact เพื่ออ่านข้อมูลใหม่
 
 อ่าน [Privacy และขอบเขตข้อมูล](docs/privacy.md) ก่อนใช้ข้อมูลธุรกิจจริง หากเชื่อมต่อไม่ได้ให้ดู [วิธีแก้ปัญหา](docs/troubleshooting.md)
 
