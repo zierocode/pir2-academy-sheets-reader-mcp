@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -30,6 +30,7 @@ describe("MCPB bundle", () => {
     const actual = createHash("sha256").update(readFileSync(BUNDLE_PATH)).digest("hex");
 
     expect(expected).toBe(actual);
+    expect(statSync(BUNDLE_PATH).size).toBeLessThan(10 * 1024 * 1024);
   }, 300_000);
 
   it("validates archive contents, native keyring variants, static tools, and credential exclusion", () => {

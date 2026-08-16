@@ -3,7 +3,7 @@
   "manifest_version": "0.4",
   "name": "pir2-academy-sheets-reader",
   "display_name": "PiR2-Sheets-Reader",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "MCP สำหรับอ่าน Google Sheet แบบ read-only โดย PiR2 Academy",
   "long_description": "MCP แบบ local สำหรับคลาส Advanced Claude Cowork ใช้อ่าน Google Sheet แบบ read-only ผู้เรียนเชื่อม Google Cloud Desktop OAuth ของตัวเอง โดย token เก็บใน credential vault ของระบบปฏิบัติการ",
   "author": {

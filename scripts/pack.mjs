@@ -75,7 +75,7 @@ try {
 
   run(process.execPath, [NPM_CLI, "ci", "--omit=dev", "--ignore-scripts", "--no-audit"], staging);
   run(process.execPath, [NPM_CLI,
-    "install", "--ignore-scripts", "--force", "--no-save", "--no-audit",
+    "install", "--omit=dev", "--ignore-scripts", "--force", "--no-save", "--no-audit",
     "@napi-rs/keyring-darwin-arm64@1.3.0",
     "@napi-rs/keyring-darwin-x64@1.3.0",
     "@napi-rs/keyring-win32-arm64-msvc@1.3.0",
