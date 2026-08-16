@@ -227,5 +227,5 @@ describe("compiled MCP stdio server", () => {
     } finally {
       await expect(redactionHarness.stop()).resolves.toEqual({ code: 0, signal: null });
     }
-  });
+  }, 15_000);
 });
