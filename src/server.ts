@@ -32,6 +32,8 @@ import {
 } from "./logging.js";
 import { createAuthStatusTool } from "./tools/auth-status.js";
 import { createConnectGoogleTool } from "./tools/connect-google.js";
+import { createDiagnoseGoogleSetupTool } from "./tools/diagnose-google-setup.js";
+import { diagnoseGoogleSetup, type GoogleSetupDiagnosis } from "./diagnostics/google-setup.js";
 import { createGetSpreadsheetMetadataTool } from "./tools/get-spreadsheet-metadata.js";
 import { createReadSheetRangesTool } from "./tools/read-sheet-ranges.js";
 import { createReadSheetSampleTool } from "./tools/read-sheet-sample.js";
@@ -59,6 +61,7 @@ const ERROR_CODES = new Set<ErrorCode>([
 type ToolName =
   | "google_auth_status"
   | "connect_google"
+  | "diagnose_google_setup"
   | "get_spreadsheet_metadata"
   | "read_sheet_sample"
   | "read_sheet_ranges";
@@ -155,6 +158,7 @@ const SAFE_ERRORS: Record<ErrorCode, SafeError> = {
 export type ToolServices = {
   oauth: Pick<GoogleOAuthCoordinator, "start" | "status"> & { close?: () => Promise<void> };
   sheets: Pick<SheetsReader, "getMetadata" | "readSample" | "readRanges">;
+  diagnostics: { run(): Promise<GoogleSetupDiagnosis> };
 };
 
 export type ToolCallResult = {
@@ -191,7 +195,7 @@ export type ToolCatalogOptions = {
 export function buildServerIdentity(): { name: string; version: string } {
   return {
     name: "pir2-academy-sheets-reader",
-    version: "0.1.3"
+    version: "0.1.4"
   };
 }
 
@@ -205,6 +209,7 @@ export function createToolCatalog(
   const definitions: UnboundToolDefinition[] = [
     createAuthStatusTool(),
     createConnectGoogleTool(),
+    createDiagnoseGoogleSetupTool(),
     createGetSpreadsheetMetadataTool(),
     createReadSheetSampleTool(),
     createReadSheetRangesTool()
@@ -284,7 +289,8 @@ export function createProductionToolServices(
 
   return {
     oauth,
-    sheets: createAuthorizedSheetsService(oauth, credentialProvider, tokenStore)
+    sheets: createAuthorizedSheetsService(oauth, credentialProvider, tokenStore),
+    diagnostics: { run: () => diagnoseGoogleSetup(environment, oauth, tokenStore) }
   };
 }
 
@@ -452,6 +458,7 @@ function writeSafeDiagnostic(
     durationMs: Math.max(0, durationMs),
     status: result.structuredContent.ok ? "success" : "failure"
   };
+  if (!result.structuredContent.ok) event.errorCode = result.structuredContent.error.code;
   const successData = result.structuredContent.ok ? result.structuredContent.data : undefined;
   const spreadsheetId = safeSpreadsheetId(successData);
   const counts = safeCounts(successData);

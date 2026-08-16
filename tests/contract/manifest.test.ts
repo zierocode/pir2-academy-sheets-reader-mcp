@@ -8,6 +8,7 @@ const MANIFEST_PATH = resolve(ROOT, "manifest.json");
 const TOOL_NAMES = [
   "google_auth_status",
   "connect_google",
+  "diagnose_google_setup",
   "get_spreadsheet_metadata",
   "read_sheet_sample",
   "read_sheet_ranges"
@@ -72,7 +73,7 @@ describe("MCPB manifest contract", () => {
     });
   });
 
-  it("statically declares exactly the five stable read-only tools", () => {
+  it("statically declares the six stable read-only and diagnostic tools", () => {
     const manifest = readManifest();
     const tools = manifest.tools as Array<{ name?: string }>;
 

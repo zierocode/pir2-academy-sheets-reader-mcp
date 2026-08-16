@@ -44,7 +44,7 @@ function parseRequestedGid(url: URL): number | undefined {
     return undefined;
   }
 
-  if (gids.length !== 1 || !GID_PATTERN.test(gids[0])) {
+  if (gids.some((gid) => !GID_PATTERN.test(gid)) || new Set(gids).size !== 1) {
     return invalidSpreadsheetReference();
   }
 

@@ -120,7 +120,7 @@ describe("compiled MCP stdio server", () => {
     }
   }, 30_000);
 
-  it("serves all five tools over pure stdio without attempting real authentication", async () => {
+  it("serves all six tools over pure stdio without attempting real authentication", async () => {
     const initialized = await harness.request(1, "initialize", {
       protocolVersion: "2025-03-26",
       capabilities: {},
@@ -134,6 +134,7 @@ describe("compiled MCP stdio server", () => {
     expect(tools.map((tool) => tool.name)).toEqual([
       "google_auth_status",
       "connect_google",
+      "diagnose_google_setup",
       "get_spreadsheet_metadata",
       "read_sheet_sample",
       "read_sheet_ranges"
@@ -174,6 +175,20 @@ describe("compiled MCP stdio server", () => {
     expect((status.result as { structuredContent?: unknown }).structuredContent).toMatchObject({
       ok: true,
       data: { credentialsConfigured: false, status: "not_configured", scopeGranted: false }
+    });
+
+    const diagnosis = await harness.request(32, "tools/call", {
+      name: "diagnose_google_setup",
+      arguments: {}
+    });
+    expect(diagnosis.error).toBeUndefined();
+    expect((diagnosis.result as { structuredContent?: unknown }).structuredContent).toMatchObject({
+      ok: true,
+      data: {
+        overall: "needs_action",
+        primaryCode: "CREDENTIAL_FILE_NOT_SELECTED",
+        checks: { extensionLoaded: true, credentialsSelected: false }
+      }
     });
 
     const invalidConfirmation = await harness.request(31, "tools/call", {

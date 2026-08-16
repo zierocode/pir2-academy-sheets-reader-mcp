@@ -1,6 +1,6 @@
 {
   "name": "pir2-academy-sheets-reader",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "MCP แบบ local สำหรับอ่าน Google Sheet แบบ read-only โดย PiR2 Academy",
   "license": "MIT",
   "type": "module",

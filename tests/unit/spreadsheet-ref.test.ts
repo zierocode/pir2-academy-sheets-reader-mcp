@@ -31,6 +31,11 @@ describe("parseSpreadsheetRef", () => {
       { spreadsheetId: SPREADSHEET_ID, requestedGid: 42 }
     ],
     [
+      "a copied browser URL with the same gid in query and fragment",
+      `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/edit?gid=42#gid=42`,
+      { spreadsheetId: SPREADSHEET_ID, requestedGid: 42 }
+    ],
+    [
       "a Drive open URL with an id query parameter",
       `https://drive.google.com/open?id=${SPREADSHEET_ID}`,
       { spreadsheetId: SPREADSHEET_ID }
@@ -59,6 +64,10 @@ describe("parseSpreadsheetRef", () => {
     [
       "a URL with a malformed gid",
       `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/edit#gid=-1`
+    ],
+    [
+      "a URL with conflicting query and fragment gids",
+      `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/edit?gid=1#gid=2`
     ],
     ["an overlong reference", "x".repeat(2049)]
   ])("rejects %s without echoing the input", (_caseName, input) => {

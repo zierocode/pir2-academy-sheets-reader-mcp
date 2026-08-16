@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 export type SafeLogTool =
   | "google_auth_status"
   | "connect_google"
+  | "diagnose_google_setup"
   | "get_spreadsheet_metadata"
   | "read_sheet_sample"
   | "read_sheet_ranges";
@@ -27,6 +28,7 @@ export type SafeLogEvent = {
   tool: SafeLogTool;
   durationMs: number;
   status: SafeLogStatus;
+  errorCode?: string;
   spreadsheetIdHash?: SpreadsheetIdHash;
   counts?: SafeLogCounts;
 };
@@ -43,6 +45,9 @@ export function writeDiagnostic(event: SafeLogEvent): void {
     tool: event.tool,
     durationMs: event.durationMs,
     status: event.status,
+    ...(typeof event.errorCode === "string" && /^[A-Z][A-Z0-9_]{2,64}$/.test(event.errorCode)
+      ? { errorCode: event.errorCode }
+      : {}),
     ...(spreadsheetIdHash === undefined
       ? {}
       : { spreadsheetIdHash }),

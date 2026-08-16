@@ -72,6 +72,24 @@ type Harness = {
   metadataInputs: string[];
 };
 
+const readyDiagnosis = {
+  overall: "ready",
+  primaryCode: "READY",
+  checks: {
+    extensionLoaded: true,
+    credentialsSelected: true,
+    credentialFileReadable: true,
+    credentialJsonValid: true,
+    credentialType: "desktop",
+    requiredFieldsPresent: true,
+    loopbackRedirectReady: true,
+    tokenStoreReady: true,
+    googleConnected: true,
+    readOnlyScopeGranted: true
+  },
+  fixSteps: ["พร้อมอ่าน Google Sheet แบบ read-only แล้วครับ"]
+};
+
 function createHarness(status: AuthStatus = connectedStatus): Harness {
   const readSampleInputs: unknown[] = [];
   const readRangesInputs: unknown[] = [];
@@ -103,7 +121,8 @@ function createHarness(status: AuthStatus = connectedStatus): Harness {
           readRangesInputs.push(input);
           return ranges;
         })
-      }
+      },
+      diagnostics: { run: vi.fn().mockResolvedValue(readyDiagnosis) }
     },
     readSampleInputs,
     readRangesInputs,
@@ -212,6 +231,10 @@ describe("MCP tool contract", () => {
         description: "เริ่มเชื่อม Google OAuth หลังผู้เรียนยืนยัน โดยขอสิทธิ์อ่าน Google Sheet เท่านั้น"
       },
       {
+        name: "diagnose_google_setup",
+        description: "ตรวจหาสาเหตุที่ Sheets MCP ใช้งานไม่ได้ พร้อมบอกวิธีแก้ทีละขั้น โดยไม่เปิดเผย secret"
+      },
+      {
         name: "get_spreadsheet_metadata",
         description: "ตรวจชื่อไฟล์และรายการ Tab จาก Google Sheets URL หรือ spreadsheet ID"
       },
@@ -264,8 +287,25 @@ describe("MCP tool contract", () => {
       meta: { requestId: "request-123", retrievedAt: NOW }
     };
 
-    expect(harness.services.oauth.start).toHaveBeenCalledWith(true, { waitForAuthorization: true });
+    expect(harness.services.oauth.start).toHaveBeenCalledWith(true, { waitForAuthorization: false });
     expectMatchingContent(result, expected);
+  });
+
+  it("returns privacy-safe setup diagnosis with one actionable recovery path", async () => {
+    const harness = createHarness();
+    const result = await tool(harness, "diagnose_google_setup").handler({});
+
+    expect(harness.services.diagnostics.run).toHaveBeenCalledOnce();
+    expectMatchingContent(result, {
+      ok: true,
+      data: readyDiagnosis,
+      meta: { requestId: "request-123", retrievedAt: NOW }
+    });
+    const serialized = JSON.stringify(result);
+    expect(serialized).not.toContain("client_secret");
+    expect(serialized).not.toContain("access_token");
+    expect(serialized).not.toContain("refresh_token");
+    expect(serialized).not.toContain("GOOGLE_OAUTH_CREDENTIALS_FILE");
   });
 
   it("delegates read tools with documented defaults and matching envelopes", async () => {

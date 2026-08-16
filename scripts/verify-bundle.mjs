@@ -59,7 +59,7 @@ try {
   }
   const manifest = JSON.parse(readFileSync(resolve(packageRoot, "manifest.json"), "utf8"));
   const expectedTools = [
-    "google_auth_status", "connect_google", "get_spreadsheet_metadata",
+    "google_auth_status", "connect_google", "diagnose_google_setup", "get_spreadsheet_metadata",
     "read_sheet_sample", "read_sheet_ranges"
   ];
   if (JSON.stringify(manifest.tools.map((tool) => tool.name)) !== JSON.stringify(expectedTools)) {
