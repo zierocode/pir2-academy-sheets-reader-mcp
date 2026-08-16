@@ -27,4 +27,4 @@ The OAuth loopback listener binds to the learner's computer for the duration of 
 
 ## Stable tools
 
-The Dashboard Skill depends only on the five manifest-declared tool names and their stable structured result envelopes. This keeps the MCP reusable while allowing course-specific dashboard behavior to evolve independently.
+The dashboard flow depends on the five read/auth tool names and their stable structured result envelopes. A sixth, read-only `diagnose_google_setup` tool is intentionally independent from dashboard data so learners can recover setup failures without exposing credentials. This keeps the MCP reusable while allowing course-specific dashboard behavior to evolve independently.

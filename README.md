@@ -10,9 +10,18 @@ Bundle มี tools 5 ตัว:
 
 - `google_auth_status` — ตรวจว่าเชื่อม Google พร้อมหรือยัง
 - `connect_google` — เปิดหน้าขอสิทธิ์อ่าน Google Sheet
+- `diagnose_google_setup` — ตรวจ setup และบอกวิธีแก้ที่ตรงกับสาเหตุ โดยไม่แสดง secret
 - `get_spreadsheet_metadata` — อ่านชื่อไฟล์และข้อมูล Tab โดยไม่อ่าน cell values
 - `read_sheet_sample` — อ่านตัวอย่างขนาดเล็กเพื่อดูโครงสร้างอย่างปลอดภัย
 - `read_sheet_ranges` — อ่าน A1 ranges ที่ระบุภายในขนาดที่ปลอดภัย
+
+ถ้าใช้งานไม่ได้ ให้พิมพ์ `ตรวจ Sheets MCP ให้หน่อย` เพื่อให้ Claude เรียก
+`diagnose_google_setup` แล้วทำตาม `fixSteps` ที่คืนมาได้ทันที ตัว tool จะไม่คืน path,
+client ID, client secret, project ID หรือ token ครับ
+
+หลังติดตั้ง Extension ให้เริ่มจากเปิด Chat ใหม่และตรวจว่า Extension เป็น Enabled ก่อน
+ปกติไม่ต้อง restart แต่ถ้า tool ยังไม่ปรากฏ ให้ Quit Claude Desktop ทั้งโปรแกรมแล้วเปิดใหม่หนึ่งครั้ง
+(Windows ต้อง Quit จาก system tray ไม่ใช่ปิดเฉพาะหน้าต่าง)
 
 MCP นี้แก้ สร้าง หรือลบ Spreadsheet ไม่ได้ และไม่ใช้ Google app, API key, remote MCP server หรือ OAuth broker ส่วนกลางของ PiR
 

@@ -70,6 +70,18 @@ const credentialFileSchema = z
   })
   .strict();
 
+export type CredentialFileInspection = {
+  readable: boolean;
+  jsonValid: boolean;
+  credentialType: "desktop" | "web" | "unknown";
+  requiredFieldsPresent: boolean;
+  loopbackRedirectReady: boolean;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
 async function readCredentialFile(path: string): Promise<string> {
   let fileHandle: Awaited<ReturnType<typeof open>> | undefined;
 
@@ -132,5 +144,68 @@ export async function loadDesktopCredentials(path: string): Promise<DesktopCrede
     authUri: installed.auth_uri,
     tokenUri: installed.token_uri,
     redirectUris: [...installed.redirect_uris]
+  };
+}
+
+export async function inspectDesktopCredentialFile(path: string): Promise<CredentialFileInspection> {
+  let rawContent: string;
+
+  try {
+    rawContent = await readCredentialFile(path);
+  } catch {
+    return {
+      readable: false,
+      jsonValid: false,
+      credentialType: "unknown",
+      requiredFieldsPresent: false,
+      loopbackRedirectReady: false
+    };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawContent);
+  } catch {
+    return {
+      readable: true,
+      jsonValid: false,
+      credentialType: "unknown",
+      requiredFieldsPresent: false,
+      loopbackRedirectReady: false
+    };
+  }
+
+  if (!isRecord(parsed)) {
+    return {
+      readable: true,
+      jsonValid: true,
+      credentialType: "unknown",
+      requiredFieldsPresent: false,
+      loopbackRedirectReady: false
+    };
+  }
+
+  const credentialType = isRecord(parsed.installed)
+    ? "desktop"
+    : isRecord(parsed.web) ? "web" : "unknown";
+  const record = credentialType === "desktop"
+    ? parsed.installed
+    : credentialType === "web" ? parsed.web : undefined;
+  const requiredFieldsPresent = isRecord(record) && [
+    record.client_id,
+    record.project_id,
+    record.auth_uri,
+    record.token_uri
+  ].every((value) => typeof value === "string" && value.trim().length > 0);
+  const loopbackRedirectReady = isRecord(record) &&
+    Array.isArray(record.redirect_uris) &&
+    record.redirect_uris.some((value) => typeof value === "string" && isLoopbackRedirectUri(value));
+
+  return {
+    readable: true,
+    jsonValid: true,
+    credentialType,
+    requiredFieldsPresent,
+    loopbackRedirectReady
   };
 }

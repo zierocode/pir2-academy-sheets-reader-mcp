@@ -16,6 +16,7 @@ describe("writeDiagnostic", () => {
       tool: "read_sheet_ranges",
       durationMs: 18,
       status: "failure",
+      errorCode: "AUTH_REQUIRED",
       spreadsheetIdHash,
       counts: {
         ranges: 2,
@@ -33,6 +34,7 @@ describe("writeDiagnostic", () => {
       tool: "read_sheet_ranges",
       durationMs: 18,
       status: "failure",
+      errorCode: "AUTH_REQUIRED",
       spreadsheetIdHash: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
       counts: {
         cells: 18,
