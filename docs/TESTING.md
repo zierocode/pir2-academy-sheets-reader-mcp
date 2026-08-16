@@ -6,7 +6,7 @@ Evidence is recorded in separate layers. Passing an earlier layer does not prove
 |---|---|
 | Source | TypeScript strict checks and unit, contract, integration, stdio, manifest, documentation, and secret-scan tests pass. |
 | CI | Merge-result and merged-main jobs pass on macOS ARM64, macOS Intel, Windows ARM64, and Windows x64. |
-| Packaged | The MCPB schema validates; allowlisted contents include all four native keyring variants; SHA-256 matches; credential scan passes. |
+| Packaged | The MCPB schema validates; the production-only archive stays below 10 MiB; allowlisted contents include all four native keyring variants; development packages are absent; SHA-256 matches; credential scan passes. |
 | Released | A version tag matching `package.json` produces an attached `.mcpb` and `.mcpb.sha256` from merged main. |
 | Installed | The exact release artifact installs and lists all five tools in Claude Desktop. |
 | Live canary | Real learner-owned OAuth, OS-vault persistence, metadata/sample/range reads, restart, revoke/reconnect, and coexistence are exercised without exposing Sheet data. |

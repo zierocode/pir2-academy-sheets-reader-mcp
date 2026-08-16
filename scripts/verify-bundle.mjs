@@ -74,6 +74,15 @@ try {
     if (!existsSync(resolve(packageRoot, "node_modules/@napi-rs", name))) fail(`missing native package ${name}`);
   }
 
+  const forbiddenDevelopmentPackages = [
+    "typescript", "vitest", "vite", "eslint", "@typescript-eslint", "@rolldown"
+  ];
+  for (const name of forbiddenDevelopmentPackages) {
+    if (existsSync(resolve(packageRoot, "node_modules", name))) {
+      fail(`development-only package included: ${name}`);
+    }
+  }
+
   const forbiddenNames = /(^|\/)(\.env(?:\.|$)|credentials\.json$|client_secret[^/]*\.json$|tokens?\.json$)/i;
   const forbiddenContent = /("client_secret"\s*:|-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|ya29\.[A-Za-z0-9_-]+)/;
   for (const path of walk(packageRoot)) {
