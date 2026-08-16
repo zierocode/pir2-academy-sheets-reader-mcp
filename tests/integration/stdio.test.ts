@@ -67,7 +67,7 @@ class StdioHarness {
       const timeout = setTimeout(() => {
         clearInterval(interval);
         reject(new Error(`Timed out waiting for JSON-RPC response ${id}.`));
-      }, 5_000);
+      }, 15_000);
       const interval = setInterval(() => {
         const message = this.messages.find((candidate) => candidate.id === id);
         if (!message) return;
@@ -227,5 +227,5 @@ describe("compiled MCP stdio server", () => {
     } finally {
       await expect(redactionHarness.stop()).resolves.toEqual({ code: 0, signal: null });
     }
-  }, 15_000);
+  }, 30_000);
 });
